@@ -24,8 +24,8 @@ USER spring:spring
 # Copy jar from build stage
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# Environment variables
-ENV SPRING_PROFILES_ACTIVE=prod
+# Environment variables (Railway will override this)
+ENV SPRING_PROFILES_ACTIVE=railway
 ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
 
 # Health check

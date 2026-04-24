@@ -46,10 +46,14 @@ public class SecurityConfig {
                 // 🌟 ចាប់ផ្តើមកំណត់សិទ្ធិទាំងអស់នៅក្នុង Block តែមួយនេះ
                 .authorizeHttpRequests(auth -> auth
 
+                        // ០. Swagger/OpenAPI (Public Access)
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+
                         // ១. ផ្លូវដែលអ្នកណាក៏អាចចូលបាន (Public Endpoints)
                         .requestMatchers(HttpMethod.POST, "/api/v1/register", "/api/v1/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
 
                         // ២. ផ្លូវដែលតម្រូវឱ្យមានសិទ្ធិជា ADMIN (សម្រាប់ Products)
                         .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasRole("ADMIN")

@@ -3,6 +3,9 @@ package com.example.demo_project_spring_boot.controller;
 import com.example.demo_project_spring_boot.model.Product;
 import com.example.demo_project_spring_boot.service.PopularityService;
 import com.example.demo_project_spring_boot.service.ProductService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor; // 🌟 ប្រើនេះជំនួស @Autowired
 import org.springframework.http.HttpStatus;
@@ -20,6 +23,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/products") // 🌟 កែមកត្រឹមនេះ ដើម្បីងាយស្រួលគ្រប់គ្រង URL
 @RequiredArgsConstructor
+@Tag(name = "Products", description = "Product management APIs including CRUD operations and popularity tracking")
 public class ProductController {
 
     private final ProductService productService;
@@ -27,13 +31,17 @@ public class ProductController {
 
     // ១. មើលផលិតផលទាំងអស់
     @GetMapping
+    @Operation(summary = "Get all products", description = "Retrieve a list of all available products")
     public ResponseEntity<List<Product>> getAllProducts() {
         return ResponseEntity.ok(productService.getProducts());
     }
 
     // ២. មើលផលិតផលតាម ID
     @GetMapping("/{proId}")
-    public ResponseEntity<?> getProductById(@PathVariable Long proId, HttpServletRequest request) {
+    @Operation(summary = "Get product by ID", description = "Retrieve a single product by its ID. Automatically tracks product views.")
+    public ResponseEntity<?> getProductById(
+            @Parameter(description = "Product ID", required = true) @PathVariable Long proId, 
+            HttpServletRequest request) {
         try {
             // Track product view
             String sessionId = request.getSession().getId();
