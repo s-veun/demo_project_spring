@@ -58,7 +58,7 @@ Click on your service → **Variables** tab → Add these:
 SPRING_PROFILES_ACTIVE=railway
 
 # Port
-PORT=8080
+PORT=8088
 
 # JWT Secret (generate with: openssl rand -base64 64)
 JWT_SECRET=your-super-secret-random-string-here
@@ -88,7 +88,7 @@ Railway will auto-detect Gradle, but you can configure:
 java -jar build/libs/demo_project_spring_boot-0.0.1-SNAPSHOT.jar
 ```
 
-**Port:** `8080`
+**Port:** `8088`
 
 ---
 
