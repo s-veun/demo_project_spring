@@ -1,23 +1,30 @@
-# ... (ផ្នែក build រក្សាទុកដដែល) ...
 
-# Run stage
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /app
+
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle .
+COPY settings.gradle .
+
+
+RUN chmod +x gradlew
+COPY src src
+RUN ./gradlew bootJar --no-daemon
+
+
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Add non-root user
+
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 
-# Copy jar from build stage
+
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# កែប្រែត្រង់នេះ៖ បន្ថែមការបង្ខំបិទ GcpCloudSql
-ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC \
-    -Dspring.autoconfigure.exclude=com.google.cloud.spring.autoconfigure.sql.GcpCloudSqlAutoConfiguration"
 
-# ប្រសិនបើអ្នកមិនទាន់មាន application-railway.properties ត្រឹមត្រូវទេ
-# គួរដក ENV SPRING_PROFILES_ACTIVE ចេញសិន ឬប្តូរមកប្រើ default វិញ
-ENV SPRING_PROFILES_ACTIVE=default
+ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -Dspring.autoconfigure.exclude=com.google.cloud.spring.autoconfigure.sql.GcpCloudSqlAutoConfiguration"
 
 EXPOSE 8080
 
