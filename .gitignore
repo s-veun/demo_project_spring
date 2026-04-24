@@ -35,3 +35,9 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Environment Variables ###
+.env
+.env.railway
+.env.local
+.env.production
