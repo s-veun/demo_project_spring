@@ -17,8 +17,12 @@ RUN cp build/libs/*.jar app.jar
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 
-# កំណត់ Port ឱ្យត្រូវនឹង application.properties (8088)
+# កំណត់ Port ឱ្យត្រូវគ្នា (៨០៨៨)
 ENV SERVER_PORT=8088
 EXPOSE 8088
+
+# កែត្រង់នេះ៖ ប្តូរពី 8080 ទៅ 8088
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8088/actuator/health || exit 1
 
 ENTRYPOINT ["sh", "-c", "java -Dspring.profiles.active=default -jar app.jar"]
