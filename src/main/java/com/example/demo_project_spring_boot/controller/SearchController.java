@@ -13,7 +13,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/v1/search")
 @RequiredArgsConstructor

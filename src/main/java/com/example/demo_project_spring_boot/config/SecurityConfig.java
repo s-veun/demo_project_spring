@@ -13,7 +13,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -45,42 +44,63 @@ public class SecurityConfig {
                 // បិទ CSRF
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // កំណត់ Session ជា STATELESS (ព្រោះយើងប្រើ JWT)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // ✅ បន្ថែម CORS
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // 🌟 ចាប់ផ្តើមកំណត់សិទ្ធិទាំងអស់នៅក្នុង Block តែមួយនេះ
+                // STATELESS Session
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 .authorizeHttpRequests(auth -> auth
 
-                        // ០. Swagger/OpenAPI (Public Access)
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        // ០. ✅ បន្ថែម root, error, favicon
+                        .requestMatchers("/", "/error", "/favicon.ico").permitAll()
 
-                        // ១. ផ្លូវដែលអ្នកណាក៏អាចចូលបាន (Public Endpoints)
-                        .requestMatchers(HttpMethod.POST, "/api/v1/register", "/api/v1/login").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
+                        // ១. Swagger/OpenAPI
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/index.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs",
+                                "/webjars/**"
+                        ).permitAll()
+
+                        // ២. Public Endpoints
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/register",
+                                "/api/v1/login"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/products/**",
+                                "/api/v1/categories/**"
+                        ).permitAll()
+
+                        // ៣. Actuator Health
                         .requestMatchers("/actuator/health").permitAll()
 
-                        // ២. ផ្លូវដែលតម្រូវឱ្យមានសិទ្ធិជា ADMIN (សម្រាប់ Products)
+                        // ៤. ADMIN — Products
                         .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasRole("ADMIN")
 
-                        // ៣. ផ្លូវដែលតម្រូវឱ្យមានសិទ្ធិជា ADMIN (សម្រាប់ Categories)
-                        .requestMatchers(HttpMethod.POST, "/api/v1/categories").hasRole("ADMIN")
+                        // ៥. ADMIN — Categories
+                        .requestMatchers(HttpMethod.POST, "/api/v1/categories/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/categories/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/categories/**").hasRole("ADMIN")
 
-                        // ៤. ផ្លូវផ្សេងៗសម្រាប់ ADMIN
+                        // ៦. ADMIN — Dashboard
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
-                        // ៥. ផ្លូវដែលអាចចូលបានទាំង USER និង ADMIN
+                        // ៧. USER + ADMIN
                         .requestMatchers("/api/v1/me").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/v1/profile/**").hasAnyRole("USER", "ADMIN")
 
-                        // 🌟 ៦. ច្បាប់ចុងក្រោយគេបង្អស់៖ រាល់ផ្លូវផ្សេងពីនេះ ត្រូវតែមាន Token (Login រួច)
+                        // ៨. ផ្លូវផ្សេងទាំងអស់ → ត្រូវការ Token
                         .anyRequest().authenticated()
                 )
 
-                // ភ្ជាប់ Provider និង Filter របស់ JWT
+                // JWT Filter
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -89,10 +109,8 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        // បង្កើត Object DaoAuthenticationProvider ដោយទទេ រួចទើប Set តម្លៃឱ្យវា
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
-
         return provider;
     }
 
@@ -104,10 +122,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*")); // ឬ specific domains
-        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
