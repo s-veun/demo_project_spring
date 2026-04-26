@@ -14,8 +14,8 @@ RUN ./gradlew bootJar --no-daemon
 RUN cp build/libs/*.jar app.jar
 
 # កំណត់ Port ឱ្យត្រូវនឹង App (៨០៨៨)
-ENV SERVER_PORT=8088
-EXPOSE 8088
+ENV SERVER_PORT=8080
+EXPOSE 8080
 
 # កែសម្រួល Healthcheck ឱ្យត្រូវនឹង Port ៨០៨៨
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
