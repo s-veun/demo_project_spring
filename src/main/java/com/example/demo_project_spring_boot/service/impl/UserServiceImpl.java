@@ -5,6 +5,7 @@ import com.example.demo_project_spring_boot.dto.ChangePasswordRequest;
 import com.example.demo_project_spring_boot.dto.UserProfileResponse;
 import com.example.demo_project_spring_boot.exception.DuplicateResourceException;
 import com.example.demo_project_spring_boot.Enum.Role;
+import com.example.demo_project_spring_boot.exception.ResourceNotFoundException;
 import com.example.demo_project_spring_boot.model.User;
 import com.example.demo_project_spring_boot.model.Address;
 import com.example.demo_project_spring_boot.repository.UserRepository;
@@ -108,6 +109,20 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new RuntimeException("រកមិនឃើញអ្នកប្រើប្រាស់: " + username));
 
         return mapToProfileResponse(user);
+    }
+
+    @Override
+    public void changeUserRole(Long userId, String role) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User : " + userId + " Not Found"));
+
+        try {
+            user.setRole(Role.valueOf(role.toUpperCase()));
+            userRepository.save(user);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid role: " + role + ". Must be USER or ADMIN");
+        }
     }
 
     // --- Helper Method សម្រាប់បំប្លែង Entity ទៅជា DTO (ដើម្បីកុំឱ្យសរសេរកូដជាន់គ្នា) ---

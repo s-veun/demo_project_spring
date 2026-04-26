@@ -14,4 +14,5 @@ public interface UserService {
     void deleteUser(Long userId);
     UserProfileResponse getUserProfile(Long userId);
     UserProfileResponse getMyProfile(String username);
+    void changeUserRole(Long userId, String role);
 }
