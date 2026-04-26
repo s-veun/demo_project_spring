@@ -2,9 +2,16 @@ package com.example.demo_project_spring_boot.controller;
 
 import com.example.demo_project_spring_boot.config.JwtService;
 import com.example.demo_project_spring_boot.dto.ChangePasswordRequest;
+import com.example.demo_project_spring_boot.dto.LoginRequest;
 import com.example.demo_project_spring_boot.dto.UserProfileResponse;
+import com.example.demo_project_spring_boot.dto.RegisterRequest;
 import com.example.demo_project_spring_boot.model.User;
 import com.example.demo_project_spring_boot.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,37 +29,53 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
+@Tag(name = "User", description = "User Authentication & Profile APIs")
 public class UserController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
-
-    // 🌟 ហៅ UserService Interface ដែលយើងបានកែ
     private final UserService userService;
-
-    // 🌟 ហៅ UserDetailsService (វានឹងទាញយក CustomUserDetailsService មកប្រើដោយស្វ័យប្រវត្តិ)
     private final UserDetailsService userDetailsService;
 
+    // ✅ ប្រើ RegisterRequest DTO ជំនួស User entity
+    @Operation(summary = "Register new user")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "User registered successfully"),
+            @ApiResponse(responseCode = "400", description = "Bad request")
+    })
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody User user) {
+    public ResponseEntity<?> registerUser(@RequestBody RegisterRequest request) {
+        // ✅ convert RegisterRequest → User
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setPassword(request.getPassword());
+        user.setEmail(request.getEmail());
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setPhoneNumber(request.getPhoneNumber());
+
         User registeredUser = userService.registerUser(user);
-        registeredUser.setPassword(null); // លាក់ password ពេលបញ្ជូនទៅវិញ
+        registeredUser.setPassword(null);
         return new ResponseEntity<>(registeredUser, HttpStatus.CREATED);
     }
 
+    // ✅ ប្រើ LoginRequest DTO ជំនួស User entity
+    @Operation(summary = "Login and get JWT token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Login successful"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials")
+    })
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User logonRequest){
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
-            // ផ្ទៀងផ្ទាត់ជាមួយ Security
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            logonRequest.getUsername(),
-                            logonRequest.getPassword()
+                            request.getUsername(),
+                            request.getPassword()
                     )
             );
 
-            // បង្កើត JWT Token
-            UserDetails userDetails = userDetailsService.loadUserByUsername(logonRequest.getUsername());
+            UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
             String jwtToken = jwtService.generateToken(userDetails);
 
             Map<String, Object> response = new HashMap<>();
@@ -70,21 +93,37 @@ public class UserController {
         }
     }
 
+    @Operation(summary = "Get current user profile", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Profile retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     @GetMapping("/profile")
     public ResponseEntity<UserProfileResponse> getProfile(Authentication authentication) {
-        // authentication.getName() នឹងផ្ដល់ username ដែលដកចេញពី JWT Token
         UserProfileResponse response = userService.getMyProfile(authentication.getName());
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Get current user (alias)", security = @SecurityRequirement(name = "bearerAuth"))
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileResponse> getMe(Authentication authentication) {
+        UserProfileResponse response = userService.getMyProfile(authentication.getName());
+        return ResponseEntity.ok(response);
+    }
 
+    @Operation(summary = "Change password", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password changed successfully"),
+            @ApiResponse(responseCode = "400", description = "Bad request"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     @PutMapping("/profile/change-password")
     public ResponseEntity<?> changePassword(
             Authentication authentication,
             @RequestBody ChangePasswordRequest request) {
 
         if (authentication == null || !authentication.isAuthenticated()) {
-            return new ResponseEntity<>("Please Login First !", HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<>("Please Login First!", HttpStatus.UNAUTHORIZED);
         }
 
         try {
