@@ -17,26 +17,21 @@ import java.util.List;
 @Configuration
 public class OpenAPIConfig {
 
-    @Value("${server.port:8088}")
+    @Value("${server.port:8080}")  // ✅ កែ 8088 → 8080
     private String serverPort;
+
+    @Value("${RAILWAY_PUBLIC_DOMAIN:demoprojectspring-production.up.railway.app}")
+    private String productionDomain;  // ✅ បន្ថែម variable នេះ
 
     @Bean
     public OpenAPI customOpenAPI() {
         final String securitySchemeName = "bearerAuth";
-        
+
         return new OpenAPI()
                 .info(new Info()
                         .title("E-Commerce API")
                         .version("1.0.0")
                         .description("Complete E-Commerce REST API with Spring Boot\n\n" +
-                                "**Features:**\n" +
-                                "- User Authentication & Authorization\n" +
-                                "- Product Management with Cloudinary\n" +
-                                "- Shopping Cart & Orders\n" +
-                                "- Reviews & Ratings\n" +
-                                "- Wishlist & Popularity Tracking\n" +
-                                "- Advanced Search & Filters\n" +
-                                "- Admin Dashboard Analytics\n\n" +
                                 "**Authentication:**\n" +
                                 "Use the 'Authorize' button above to enter your JWT token.\n" +
                                 "Format: `Bearer <your-token>`")
@@ -51,7 +46,7 @@ public class OpenAPIConfig {
                                 .url("http://localhost:" + serverPort)
                                 .description("Local Development Server"),
                         new Server()
-                                .url("https://your-production-domain.com")
+                                .url("https://" + productionDomain)  // ✅ Dynamic URL
                                 .description("Production Server")))
                 .addSecurityItem(new SecurityRequirement()
                         .addList(securitySchemeName))
