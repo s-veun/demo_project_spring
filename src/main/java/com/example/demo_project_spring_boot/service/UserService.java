@@ -8,6 +8,7 @@ import java.util.List;
 
 public interface UserService {
     User registerUser(User user);
+    User registerAdmin(User user);
     void changePassword(String username, ChangePasswordRequest request);
     List<UserProfileResponse> getAllUsers();
     void toggleUserStatus(Long userId); // បិទ/បើក គណនី

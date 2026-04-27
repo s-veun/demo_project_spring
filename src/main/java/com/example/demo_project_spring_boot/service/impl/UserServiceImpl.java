@@ -6,8 +6,8 @@ import com.example.demo_project_spring_boot.dto.UserProfileResponse;
 import com.example.demo_project_spring_boot.exception.DuplicateResourceException;
 import com.example.demo_project_spring_boot.Enum.Role;
 import com.example.demo_project_spring_boot.exception.ResourceNotFoundException;
-import com.example.demo_project_spring_boot.model.User;
 import com.example.demo_project_spring_boot.model.Address;
+import com.example.demo_project_spring_boot.model.User;
 import com.example.demo_project_spring_boot.repository.UserRepository;
 import com.example.demo_project_spring_boot.service.UserService;
 import jakarta.transaction.Transactional;
@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -27,87 +26,90 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    // ✅ Register USER — Force Role.USER ជានិច្ច
     @Override
     public User registerUser(User user) {
-        // ១. ពិនិត្យមើលឈ្មោះអ្នកប្រើប្រាស់ជាន់គ្នា
         if (userRepository.findByUsername(user.getUsername()).isPresent()) {
-            throw new DuplicateResourceException("ឈ្មោះអ្នកប្រើប្រាស់ '" + user.getUsername() + "' មានក្នុងប្រព័ន្ធរួចហើយ");
+            throw new DuplicateResourceException(
+                    "ឈ្មោះអ្នកប្រើប្រាស់ '" + user.getUsername() + "' មានក្នុងប្រព័ន្ធរួចហើយ");
         }
-
-        // ២. ធ្វើការ Encode Password ដើម្បីសុវត្ថិភាព
+        // ✅ Force USER role — ignore role ពី request
+        user.setRole(Role.USER);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setIsEnabled(true);
+        return userRepository.save(user);
+    }
 
-        // ៣. កំណត់ Role ជា USER ជាលំនាំដើម ប្រសិនបើមិនបានបញ្ជូនមក
-        if (user.getRole() == null) {
-            user.setRole(Role.USER);
+    // ✅ Register ADMIN — Force Role.ADMIN
+    @Override
+    public User registerAdmin(User user) {
+        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+            throw new DuplicateResourceException(
+                    "Username '" + user.getUsername() + "' already exists");
         }
-
-        if (user.getIsEnabled() == null) {
-            user.setIsEnabled(true);
-        }
-
+        // ✅ Force ADMIN role — ignore role ពី request
+        user.setRole(Role.ADMIN);
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setIsEnabled(true);
         return userRepository.save(user);
     }
 
     @Override
     public void changePassword(String username, ChangePasswordRequest request) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException(username + "Not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        username + " Not found"));
 
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
-            throw new RuntimeException("Passwords don't match");
+            throw new RuntimeException("Old password is incorrect");
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
     }
 
+    // ✅ Get all USERS only (មិនមែន ADMIN)
     @Override
     public List<UserProfileResponse> getAllUsers() {
-        return userRepository.findByRole(Role.USER).stream()
+        return userRepository.findAll().stream()
                 .map(this::mapToProfileResponse)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Override
     public void toggleUserStatus(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("រកមិនឃើញអ្នកប្រើប្រាស់ ID: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "រកមិនឃើញអ្នកប្រើប្រាស់ ID: " + userId));
 
-        boolean currentStatus = user.getIsEnabled() != null ? user.getIsEnabled() : true;
-
-        // ២. ប្ដូរ Status ថ្មី (ប្រើ setIsEnabled)
+        boolean currentStatus = user.getIsEnabled() != null
+                ? user.getIsEnabled() : true;
         user.setIsEnabled(!currentStatus);
-
         userRepository.save(user);
     }
 
     @Override
     public void deleteUser(Long userId) {
         if (!userRepository.existsById(userId)) {
-            throw new RuntimeException("មិនអាចលុបបានទេ ព្រោះរកមិនឃើញ User ID: " + userId);
+            throw new ResourceNotFoundException(
+                    "មិនអាចលុបបានទេ ព្រោះរកមិនឃើញ User ID: " + userId);
         }
         userRepository.deleteById(userId);
     }
 
-    /**
-     * ប្រើសម្រាប់ Admin ដែលចង់មើល Profile របស់ User ផ្សេងទៀតតាមរយៈ ID
-     */
     @Override
     public UserProfileResponse getUserProfile(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("រកមិនឃើញអ្នកប្រើប្រាស់ ID: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "រកមិនឃើញអ្នកប្រើប្រាស់ ID: " + userId));
         return mapToProfileResponse(user);
     }
 
-    /**
-     * ប្រើសម្រាប់ម្ចាស់ Profile ខ្លួនឯង (ទាំង User និង Admin) បន្ទាប់ពី Login ជោគជ័យ
-     */
     @Override
     public UserProfileResponse getMyProfile(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("រកមិនឃើញអ្នកប្រើប្រាស់: " + username));
-
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "រកមិនឃើញអ្នកប្រើប្រាស់: " + username));
         return mapToProfileResponse(user);
     }
 
@@ -116,22 +118,22 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "User : " + userId + " Not Found"));
-
         try {
             user.setRole(Role.valueOf(role.toUpperCase()));
             userRepository.save(user);
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid role: " + role + ". Must be USER or ADMIN");
+            throw new RuntimeException(
+                    "Invalid role: " + role + ". Must be USER or ADMIN");
         }
     }
 
-    // --- Helper Method សម្រាប់បំប្លែង Entity ទៅជា DTO (ដើម្បីកុំឱ្យសរសេរកូដជាន់គ្នា) ---
+    // ✅ Helper — convert User Entity → UserProfileResponse DTO
     private UserProfileResponse mapToProfileResponse(User user) {
-        // បំប្លែងបញ្ជីអាសយដ្ឋាន (Addresses) ទៅជា DTO
-        List<AddressDto> addressDtos = user.getAddresses() != null ?
-                user.getAddresses().stream()
-                        .map(this::mapAddressToDto)
-                        .collect(Collectors.toList()) : List.of();
+        List<AddressDto> addressDtos = user.getAddresses() != null
+                ? user.getAddresses().stream()
+                  .map(this::mapAddressToDto)
+                  .collect(Collectors.toList())
+                : List.of();
 
         return UserProfileResponse.builder()
                 .id(user.getId())
