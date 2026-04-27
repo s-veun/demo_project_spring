@@ -17,10 +17,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Component
-@RequiredArgsConstructor // វានឹងបង្កើត Constructor ឱ្យតែអថេរណាដែលមានពាក្យ 'final' ប៉ុណ្ណោះ
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    // 🌟 ត្រូវតែមានពាក្យ final ដើម្បីឱ្យ Constructor Injection ដំណើរការ
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
@@ -32,38 +31,62 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String username;
 
-        // ១. ត្រួតពិនិត្យ Header
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        // 1. No Authorization header
+        if (authHeader == null || authHeader.isBlank()) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // ២. ទាញយក Token និង Username
-        jwt = authHeader.substring(7);
-        username = jwtService.extractUsername(jwt);
-
-        // ៣. បញ្ជាក់អត្តសញ្ញាណ (Authentication)
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities() // Role ស្ថិតនៅត្រង់នេះ
-                );
-
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                // បញ្ជូនទៅក្នុង Security Context
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+        // 2. Authorization header exists but not Bearer token
+        if (!authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        // ៤. បញ្ជូនទៅ Filter បន្ទាប់
+        // 3. Extract token
+        final String jwt = authHeader.substring(7).trim();
+
+        // 4. Empty token
+        if (jwt.isBlank()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        try {
+            // 5. Extract username safely
+            final String username = jwtService.extractUsername(jwt);
+
+            // 6. Authenticate only if not already authenticated
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+                // 7. Validate token
+                if (jwtService.isTokenValid(jwt, userDetails)) {
+
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
+
+                    authToken.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request)
+                    );
+
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            }
+
+        } catch (Exception ex) {
+            // Invalid / malformed / expired JWT
+            // Ignore token and continue request without authentication
+            SecurityContextHolder.clearContext();
+        }
+
+        // 8. Continue filter chain
         filterChain.doFilter(request, response);
     }
 }

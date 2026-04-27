@@ -141,10 +141,8 @@ public class ProductController {
             @RequestParam(value = "proPrice", required = false) BigDecimal proPrice,
             @RequestParam(value = "proBrand", required = false) String proBrand,
             @RequestParam(value = "quantity", required = false) Integer quantity,
-            @RequestParam(value = "discount", required = false,
-                    defaultValue = "0") Double discount,
-            @RequestParam(value = "tags", required = false,
-                    defaultValue = "") String tags,
+            @RequestParam(value = "discount", required = false) Double discount,
+            @RequestParam(value = "tags", required = false) String tags,
             @RequestParam(value = "categoryId", required = false) Long categoryId,
             @RequestParam(value = "imageFile", required = false)
             MultipartFile imageFile) {

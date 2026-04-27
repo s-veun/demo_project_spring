@@ -32,14 +32,20 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<Product> getProducts() {
-        return productReposity.findAll();
+        List<Product> products = productReposity.findAllWithCategory();
+        // Initialize transient category fields for serialization
+        products.forEach(this::populateCategoryInfo);
+        return products;
     }
 
     @Override
     public Product getProductById(Long proId) {
-        return productReposity.findById(proId)
+        Product product = productReposity.findByIdWithCategory(proId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Product : " + proId + " Not Found"));
+        // Initialize transient category fields for serialization
+        populateCategoryInfo(product);
+        return product;
     }
 
     @Override
@@ -71,6 +77,8 @@ public class ProductServiceImpl implements ProductService {
         }
 
         Product savedProduct = productReposity.save(product);
+        // Populate category info for response
+        populateCategoryInfo(savedProduct);
 
         if (imageFile != null && !imageFile.isEmpty()) {
             Map uploadResult = cloudinaryService.uploadImage(imageFile, "products");
@@ -89,25 +97,45 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Product updateProduct(Long id, ProductRequestDTO request, MultipartFile imageFile) throws IOException {
-        Product existingProduct = productReposity.findById(id)
+        Product existingProduct = productReposity.findByIdWithCategory(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Product : " + id + " Not Found"));
 
-        String trimmedName = request.getProName().trim();
-
-        if (!existingProduct.getProName().equalsIgnoreCase(trimmedName)
-                && productReposity.existsByProName(trimmedName)) {
-            throw new DuplicateResourceException(
-                    "Product : '" + trimmedName + "' Already Exists");
+        // Handle partial updates - only update non-null fields
+        if (request.getProName() != null) {
+            String trimmedName = request.getProName().trim();
+            
+            if (!existingProduct.getProName().equalsIgnoreCase(trimmedName)
+                    && productReposity.existsByProName(trimmedName)) {
+                throw new DuplicateResourceException(
+                        "Product : '" + trimmedName + "' Already Exists");
+            }
+            existingProduct.setProName(trimmedName);
         }
-
-        existingProduct.setProName(trimmedName);
-        existingProduct.setProDesc(request.getProDesc());
-        existingProduct.setProPrice(request.getProPrice());
-        existingProduct.setProBrand(request.getProBrand());
-        existingProduct.setStock(request.getQuantity());
-        existingProduct.setDiscount(request.getDiscount());
-        existingProduct.setTags(request.getTags());
+        
+        if (request.getProDesc() != null) {
+            existingProduct.setProDesc(request.getProDesc());
+        }
+        
+        if (request.getProPrice() != null) {
+            existingProduct.setProPrice(request.getProPrice());
+        }
+        
+        if (request.getProBrand() != null) {
+            existingProduct.setProBrand(request.getProBrand());
+        }
+        
+        if (request.getQuantity() != null) {
+            existingProduct.setStock(request.getQuantity());
+        }
+        
+        if (request.getDiscount() != null) {
+            existingProduct.setDiscount(request.getDiscount());
+        }
+        
+        if (request.getTags() != null) {
+            existingProduct.setTags(request.getTags());
+        }
 
         if (request.getCategoryId() != null) {
             Category category = categoryRepository.findById(request.getCategoryId())
@@ -139,7 +167,10 @@ public class ProductServiceImpl implements ProductService {
             existingProduct.getImages().add(productImage);
         }
 
-        return productReposity.save(existingProduct);
+        Product updatedProduct = productReposity.save(existingProduct);
+        // Populate category info for response
+        populateCategoryInfo(updatedProduct);
+        return updatedProduct;
     }
 
     @Override
@@ -162,8 +193,21 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<Product> searchProducts(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
-            return productReposity.findAll();
+            return getProducts();
         }
-        return productReposity.searchProducts(keyword.trim());
+        List<Product> products = productReposity.searchProductsWithCategory(keyword.trim());
+        // Initialize transient category fields for serialization
+        products.forEach(this::populateCategoryInfo);
+        return products;
+    }
+    
+    /**
+     * Helper method to populate transient category fields for JSON serialization
+     */
+    private void populateCategoryInfo(Product product) {
+        if (product.getCategory() != null) {
+            product.setCategoryId(product.getCategory().getCatId());
+            product.setCategoryName(product.getCategory().getCatName());
+        }
     }
 }
