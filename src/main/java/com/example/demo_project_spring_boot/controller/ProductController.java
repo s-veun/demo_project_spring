@@ -31,12 +31,14 @@ public class ProductController {
     private final ProductService productService;
     private final PopularityService popularityService;
 
+    // ១. Get All Products
     @GetMapping
     @Operation(summary = "Get all products")
     public ResponseEntity<List<Product>> getAllProducts() {
         return ResponseEntity.ok(productService.getProducts());
     }
 
+    // ២. Get Product By ID
     @GetMapping("/{proId}")
     @Operation(summary = "Get product by ID")
     public ResponseEntity<?> getProductById(
@@ -56,24 +58,47 @@ public class ProductController {
         }
     }
 
-    // ✅ ប្រើ @RequestParam ដោយផ្ទាល់ — SprinDoc parse បានងាយ
+    // ✅ ៣. Add Product — form-data
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "Add new product (Admin only)",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Add new product (Admin only) — use form-data")
     public ResponseEntity<?> addProduct(
-            @RequestParam("proName") String proName,
-            @RequestParam("proDesc") String proDesc,
-            @RequestParam("proPrice") BigDecimal proPrice,
-            @RequestParam("proBrand") String proBrand,
-            @RequestParam("quantity") Integer quantity,
-            @RequestParam(value = "discount", required = false) Double discount,
-            @RequestParam(value = "tags", required = false) String tags,
+            @RequestParam(value = "proName", required = false) String proName,
+            @RequestParam(value = "proDesc", required = false) String proDesc,
+            @RequestParam(value = "proPrice", required = false) BigDecimal proPrice,
+            @RequestParam(value = "proBrand", required = false) String proBrand,
+            @RequestParam(value = "quantity", required = false) Integer quantity,
+            @RequestParam(value = "discount", required = false,
+                    defaultValue = "0") Double discount,
+            @RequestParam(value = "tags", required = false,
+                    defaultValue = "") String tags,
             @RequestParam(value = "categoryId", required = false) Long categoryId,
-            @RequestParam(value = "imageFile", required = false) MultipartFile imageFile) {
+            @RequestParam(value = "imageFile", required = false)
+            MultipartFile imageFile) {
         try {
+            // Validate required fields
+            if (proName == null || proName.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Product name is required"));
+            }
+            if (proDesc == null || proDesc.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Product description is required"));
+            }
+            if (proPrice == null) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Product price is required"));
+            }
+            if (proBrand == null || proBrand.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Product brand is required"));
+            }
+            if (quantity == null) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Product quantity is required"));
+            }
+
             ProductRequestDTO dto = new ProductRequestDTO();
             dto.setProName(proName);
             dto.setProDesc(proDesc);
@@ -87,13 +112,15 @@ public class ProductController {
             Product savedProduct = productService.addProduct(dto, imageFile);
             return new ResponseEntity<>(savedProduct, HttpStatus.CREATED);
         } catch (RuntimeException | IOException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "មានបញ្ហាក្នុងការបន្ថែមផលិតផល"));
         }
     }
 
+    // ៤. Search Products
     @GetMapping("/search")
     @Operation(summary = "Search products by keyword")
     public ResponseEntity<List<Product>> searchProducts(
@@ -101,24 +128,38 @@ public class ProductController {
         return ResponseEntity.ok(productService.searchProducts(keyword));
     }
 
-    @PutMapping(value = "/{proId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    // ✅ ៥. Update Product — form-data
+    @PutMapping(value = "/{proId}",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "Update product (Admin only)",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Update product (Admin only) — use form-data")
     public ResponseEntity<?> updateProduct(
             @PathVariable Long proId,
-            @RequestParam("proName") String proName,
-            @RequestParam("proDesc") String proDesc,
-            @RequestParam("proPrice") BigDecimal proPrice,
-            @RequestParam("proBrand") String proBrand,
-            @RequestParam("quantity") Integer quantity,
-            @RequestParam(value = "discount", required = false) Double discount,
-            @RequestParam(value = "tags", required = false) String tags,
+            @RequestParam(value = "proName", required = false) String proName,
+            @RequestParam(value = "proDesc", required = false) String proDesc,
+            @RequestParam(value = "proPrice", required = false) BigDecimal proPrice,
+            @RequestParam(value = "proBrand", required = false) String proBrand,
+            @RequestParam(value = "quantity", required = false) Integer quantity,
+            @RequestParam(value = "discount", required = false,
+                    defaultValue = "0") Double discount,
+            @RequestParam(value = "tags", required = false,
+                    defaultValue = "") String tags,
             @RequestParam(value = "categoryId", required = false) Long categoryId,
-            @RequestParam(value = "imageFile", required = false) MultipartFile imageFile) {
+            @RequestParam(value = "imageFile", required = false)
+            MultipartFile imageFile) {
         try {
+            // For update, we can allow partial updates
+            // But if fields are provided, they should be valid
+            if (proPrice != null && proPrice.compareTo(BigDecimal.ZERO) < 0) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Product price cannot be negative"));
+            }
+            if (quantity != null && quantity < 0) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Product quantity cannot be negative"));
+            }
+
             ProductRequestDTO dto = new ProductRequestDTO();
             dto.setProName(proName);
             dto.setProDesc(proDesc);
@@ -132,31 +173,34 @@ public class ProductController {
             Product updatedProduct = productService.updateProduct(proId, dto, imageFile);
             return ResponseEntity.ok(updatedProduct);
         } catch (RuntimeException | IOException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "មានបញ្ហាក្នុងការកែប្រែផលិតផល"));
         }
     }
 
+    // ៦. Delete Product
     @DeleteMapping("/{proId}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "Delete product (Admin only)",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
-    public ResponseEntity<String> deleteProduct(@PathVariable Long proId) {
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Delete product (Admin only)")
+    public ResponseEntity<?> deleteProduct(@PathVariable Long proId) {
         try {
             productService.deleteProduct(proId);
-            return ResponseEntity.ok("លុបផលិតផលជោគជ័យ");
+            return ResponseEntity.ok(
+                    Map.of("message", "លុបផលិតផលជោគជ័យ"));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
-                    .body("មានបញ្ហាក្នុងការលុបផលិតផល");
+                    .body(Map.of("error", "មានបញ្ហាក្នុងការលុបផលិតផល"));
         }
     }
 
+    // ៧. Popular — Most Viewed
     @GetMapping("/popular/most-viewed")
     @Operation(summary = "Get most viewed products")
     public ResponseEntity<?> getMostViewedProducts(
@@ -168,6 +212,7 @@ public class ProductController {
                 "products", products));
     }
 
+    // ៨. Popular — Most Purchased
     @GetMapping("/popular/most-purchased")
     @Operation(summary = "Get most purchased products")
     public ResponseEntity<?> getMostPurchasedProducts(
@@ -179,6 +224,7 @@ public class ProductController {
                 "products", products));
     }
 
+    // ៩. Popular — Top Rated
     @GetMapping("/popular/top-rated")
     @Operation(summary = "Get top rated products")
     public ResponseEntity<?> getTopRatedProducts(
@@ -190,6 +236,7 @@ public class ProductController {
                 "products", products));
     }
 
+    // ១០. Popular — Trending
     @GetMapping("/popular/trending")
     @Operation(summary = "Get trending products")
     public ResponseEntity<?> getTrendingProducts(
@@ -201,14 +248,14 @@ public class ProductController {
                 "products", products));
     }
 
+    // ១១. Analytics (Admin)
     @GetMapping("/{proId}/analytics")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "Get product analytics (Admin only)",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Get product analytics (Admin only)")
     public ResponseEntity<?> getProductAnalytics(@PathVariable Long proId) {
-        Map<String, Object> analytics = popularityService.getProductAnalytics(proId);
+        Map<String, Object> analytics =
+                popularityService.getProductAnalytics(proId);
         return ResponseEntity.ok(analytics);
     }
 }

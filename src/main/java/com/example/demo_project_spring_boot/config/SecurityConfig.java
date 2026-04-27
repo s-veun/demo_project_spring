@@ -41,22 +41,21 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-                // បិទ CSRF
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // ✅ បន្ថែម CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-                // STATELESS Session
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // ០. ✅ បន្ថែម root, error, favicon
-                        .requestMatchers("/", "/error", "/favicon.ico").permitAll()
+                        // ០. Root, Error, Favicon
+                        .requestMatchers(
+                                "/",
+                                "/error",
+                                "/favicon.ico"
+                        ).permitAll()
 
-                        // ១. Swagger/OpenAPI
+                        // ១. Swagger
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -66,56 +65,74 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
 
-                        // ២. Public Endpoints
+                        // ២. Public — User Auth
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/register",
                                 "/api/v1/login"
                         ).permitAll()
+
+                        // ✅ ៣. Public — Admin Auth (មុន admin/** rule)
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/admin/register",
+                                "/api/v1/admin/login"
+                        ).permitAll()
+
+                        // ៤. Public — Products & Categories GET
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/products/**",
                                 "/api/v1/categories/**"
                         ).permitAll()
 
-                        // ៣. Actuator Health
+                        // ៥. Actuator
                         .requestMatchers("/actuator/health").permitAll()
 
-                        // ៤. ADMIN — Products
-                        .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasRole("ADMIN")
+                        // ៦. ADMIN — Products
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT,
+                                "/api/v1/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE,
+                                "/api/v1/products/**").hasRole("ADMIN")
 
-                        // ៥. ADMIN — Categories
-                        .requestMatchers(HttpMethod.POST, "/api/v1/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/categories/**").hasRole("ADMIN")
+                        // ៧. ADMIN — Categories
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT,
+                                "/api/v1/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE,
+                                "/api/v1/categories/**").hasRole("ADMIN")
 
-                        // ៦. ADMIN — Dashboard
+                        // ✅ ៨. ADMIN — All admin routes (បន្ទាប់ public admin routes)
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
-                        // ៧. USER + ADMIN
-                        .requestMatchers("/api/v1/me").hasAnyRole("USER", "ADMIN")
-                        .requestMatchers("/api/v1/profile/**").hasAnyRole("USER", "ADMIN")
+                        // ៩. USER + ADMIN
+                        .requestMatchers(
+                                "/api/v1/me",
+                                "/api/v1/profile/**"
+                        ).hasAnyRole("USER", "ADMIN")
 
-                        // ៨. ផ្លូវផ្សេងទាំងអស់ → ត្រូវការ Token
+                        // ១០. ផ្លូវផ្សេងទាំងអស់
                         .anyRequest().authenticated()
                 )
 
-                // JWT Filter
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter,
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         return provider;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
@@ -123,13 +140,15 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(List.of("*"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        config.setAllowedMethods(List.of(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }
