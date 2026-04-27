@@ -13,14 +13,14 @@ import java.util.Optional;
 @Repository
 public interface OrderStatusHistoryRepository extends JpaRepository<OrderStatusHistory, Long> {
 
-    List<OrderStatusHistory> findByOrderIdOrderByCreatedAtDesc(Long orderId);
+    List<OrderStatusHistory> findByOrderOrderIdOrderByCreatedAtDesc(Long orderId);
 
-    Optional<OrderStatusHistory> findTopByOrderIdOrderByCreatedAtDesc(Long orderId);
+    Optional<OrderStatusHistory> findTopByOrderOrderIdOrderByCreatedAtDesc(Long orderId);
 
-    List<OrderStatusHistory> findByOrderIdAndStatus(Long orderId, OrderStatus status);
+    List<OrderStatusHistory> findByOrderOrderIdAndStatus(Long orderId, com.example.demo_project_spring_boot.Enum.OrderStatus status);
 
     @Query("SELECT COUNT(osh) FROM OrderStatusHistory osh WHERE osh.status = :status")
-    Long countByStatus(@Param("status") OrderStatus status);
+    Long countByStatus(@Param("status") com.example.demo_project_spring_boot.Enum.OrderStatus status);
 
     @Query("SELECT osh.status, COUNT(osh) FROM OrderStatusHistory osh GROUP BY osh.status")
     List<Object[]> countByStatusGrouped();

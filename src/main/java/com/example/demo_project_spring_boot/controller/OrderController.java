@@ -51,17 +51,6 @@ public class OrderController {
         return ResponseEntity.ok(orderDtos);
     }
 
-    @PutMapping("/{orderId}/status")
-    @Transactional
-    public ResponseEntity<OrderResponseDto> updateStatus(
-            @PathVariable Long orderId,
-            @RequestParam OrderStatus status) {
-
-        Order updatedOrder = orderService.updateOrderStatus(orderId, status);
-
-        return ResponseEntity.ok(mapToOrderResponseDto(updatedOrder));
-    }
-
     @PutMapping("/{orderId}/cancel")
     @Transactional
     public ResponseEntity<OrderResponseDto> cancelOrder(@PathVariable Long orderId) {

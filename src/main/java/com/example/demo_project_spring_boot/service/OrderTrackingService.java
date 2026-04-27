@@ -29,7 +29,7 @@ public class OrderTrackingService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
 
-        List<OrderStatusHistory> history = statusHistoryRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
+        List<OrderStatusHistory> history = statusHistoryRepository.findByOrderOrderIdOrderByCreatedAtDesc(orderId);
         
         OrderTrackingResponseDto response = OrderTrackingResponseDto.builder()
                 .orderId(order.getOrderId())
@@ -82,7 +82,7 @@ public class OrderTrackingService {
             throw new ResourceNotFoundException("Order not found with id: " + orderId);
         }
 
-        List<OrderStatusHistory> history = statusHistoryRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
+        List<OrderStatusHistory> history = statusHistoryRepository.findByOrderOrderIdOrderByCreatedAtDesc(orderId);
         return history.stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
@@ -95,7 +95,7 @@ public class OrderTrackingService {
         }
 
         OrderStatusHistory latestStatus = statusHistoryRepository
-                .findTopByOrderIdOrderByCreatedAtDesc(orderId)
+                .findTopByOrderOrderIdOrderByCreatedAtDesc(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("No status history found for order: " + orderId));
 
         return mapToDto(latestStatus);
