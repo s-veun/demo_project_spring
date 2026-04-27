@@ -80,6 +80,11 @@ public class Order {
     
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private Payment payment;
+    
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    @Builder.Default
+    private List<OrderStatusHistory> statusHistory = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

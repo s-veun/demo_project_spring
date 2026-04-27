@@ -10,5 +10,5 @@ import java.util.List;
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByUser_IdOrderByOrderDateDesc(Long userId);
     boolean existsByUser_IdAndCoupon_CouponId(Long userId, Long couponId);
-
+    List<Order> findByStatus(com.example.demo_project_spring_boot.Enum.OrderStatus status);
 }
