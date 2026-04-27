@@ -1,6 +1,7 @@
 package com.example.demo_project_spring_boot.controller;
 
 import com.example.demo_project_spring_boot.dto.ProductRequestDTO;
+import com.example.demo_project_spring_boot.dto.ProductResponseDTO;
 import com.example.demo_project_spring_boot.model.Product;
 import com.example.demo_project_spring_boot.service.PopularityService;
 import com.example.demo_project_spring_boot.service.ProductService;
@@ -31,14 +32,14 @@ public class ProductController {
     private final ProductService productService;
     private final PopularityService popularityService;
 
-    // ១. Get All Products
+    // 1. Get All Products
     @GetMapping
     @Operation(summary = "Get all products")
     public ResponseEntity<List<Product>> getAllProducts() {
         return ResponseEntity.ok(productService.getProducts());
     }
 
-    // ២. Get Product By ID
+    // 2. Get Product By ID
     @GetMapping("/{proId}")
     @Operation(summary = "Get product by ID")
     public ResponseEntity<?> getProductById(
@@ -58,7 +59,7 @@ public class ProductController {
         }
     }
 
-    // ✅ ៣. Add Product — form-data
+    // 3. Add Product — form-data
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
@@ -120,7 +121,7 @@ public class ProductController {
         }
     }
 
-    // ៤. Search Products
+    // 4. Search Products
     @GetMapping("/search")
     @Operation(summary = "Search products by keyword")
     public ResponseEntity<List<Product>> searchProducts(
@@ -128,7 +129,7 @@ public class ProductController {
         return ResponseEntity.ok(productService.searchProducts(keyword));
     }
 
-    // ✅ ៥. Update Product — form-data
+    // 5. Update Product — form-data
     @PutMapping(value = "/{proId}",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
@@ -179,7 +180,7 @@ public class ProductController {
         }
     }
 
-    // ៦. Delete Product
+    // 6. Delete Product
     @DeleteMapping("/{proId}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
@@ -198,55 +199,55 @@ public class ProductController {
         }
     }
 
-    // ៧. Popular — Most Viewed
+    // 7. Popular — Most Viewed
     @GetMapping("/popular/most-viewed")
     @Operation(summary = "Get most viewed products")
     public ResponseEntity<?> getMostViewedProducts(
             @RequestParam(defaultValue = "10") int limit) {
-        List<Product> products = popularityService.getMostViewedProducts(limit);
+        List<ProductResponseDTO> products = popularityService.getMostViewedProducts(limit);
         return ResponseEntity.ok(Map.of(
                 "type", "most-viewed",
                 "count", products.size(),
                 "products", products));
     }
 
-    // ៨. Popular — Most Purchased
+    // 8. Popular — Most Purchased
     @GetMapping("/popular/most-purchased")
     @Operation(summary = "Get most purchased products")
     public ResponseEntity<?> getMostPurchasedProducts(
             @RequestParam(defaultValue = "10") int limit) {
-        List<Product> products = popularityService.getMostPurchasedProducts(limit);
+        List<ProductResponseDTO> products = popularityService.getMostPurchasedProducts(limit);
         return ResponseEntity.ok(Map.of(
                 "type", "most-purchased",
                 "count", products.size(),
                 "products", products));
     }
 
-    // ៩. Popular — Top Rated
+    // 9. Popular — Top Rated
     @GetMapping("/popular/top-rated")
     @Operation(summary = "Get top rated products")
     public ResponseEntity<?> getTopRatedProducts(
             @RequestParam(defaultValue = "10") int limit) {
-        List<Product> products = popularityService.getTopRatedProducts(limit);
+        List<ProductResponseDTO> products = popularityService.getTopRatedProducts(limit);
         return ResponseEntity.ok(Map.of(
                 "type", "top-rated",
                 "count", products.size(),
                 "products", products));
     }
 
-    // ១០. Popular — Trending
+    // 10. Popular — Trending
     @GetMapping("/popular/trending")
     @Operation(summary = "Get trending products")
     public ResponseEntity<?> getTrendingProducts(
             @RequestParam(defaultValue = "10") int limit) {
-        List<Product> products = popularityService.getTrendingProducts(limit);
+        List<ProductResponseDTO> products = popularityService.getTrendingProducts(limit);
         return ResponseEntity.ok(Map.of(
                 "type", "trending",
                 "count", products.size(),
                 "products", products));
     }
 
-    // ១១. Analytics (Admin)
+    // 11. Analytics (Admin)
     @GetMapping("/{proId}/analytics")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")

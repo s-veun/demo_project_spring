@@ -1,5 +1,6 @@
 package com.example.demo_project_spring_boot.service.impl;
 
+import com.example.demo_project_spring_boot.dto.ProductResponseDTO;
 import com.example.demo_project_spring_boot.exception.ResourceNotFoundException;
 import com.example.demo_project_spring_boot.model.Product;
 import com.example.demo_project_spring_boot.model.ProductView;
@@ -54,7 +55,7 @@ public class PopularityServiceImpl implements PopularityService {
     }
 
     @Override
-    public List<Product> getMostViewedProducts(int limit) {
+    public List<ProductResponseDTO> getMostViewedProducts(int limit) {
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
         List<Object[]> results = productViewRepository.findMostViewedProducts(sevenDaysAgo);
         
@@ -63,28 +64,31 @@ public class PopularityServiceImpl implements PopularityService {
                 .map(row -> (Long) row[0])
                 .map(productId -> productReposity.findById(productId).orElse(null))
                 .filter(Objects::nonNull)
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<Product> getMostPurchasedProducts(int limit) {
+    public List<ProductResponseDTO> getMostPurchasedProducts(int limit) {
         return productReposity.findAll().stream()
                 .sorted(Comparator.comparing(Product::getPurchaseCount).reversed())
                 .limit(limit)
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<Product> getTopRatedProducts(int limit) {
+    public List<ProductResponseDTO> getTopRatedProducts(int limit) {
         return productReposity.findAll().stream()
                 .filter(p -> p.getRating() != null)
                 .sorted(Comparator.comparing(Product::getRating).reversed())
                 .limit(limit)
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<Product> getTrendingProducts(int limit) {
+    public List<ProductResponseDTO> getTrendingProducts(int limit) {
         // Products with most views in last 7 days that are above average
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
         List<Object[]> results = productViewRepository.findMostViewedProducts(sevenDaysAgo);
@@ -104,6 +108,7 @@ public class PopularityServiceImpl implements PopularityService {
                 .map(row -> (Long) row[0])
                 .map(productId -> productReposity.findById(productId).orElse(null))
                 .filter(Objects::nonNull)
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
@@ -165,7 +170,7 @@ public class PopularityServiceImpl implements PopularityService {
     }
 
     @Override
-    public List<Product> getRecentlyViewedByUser(Long userId, int limit) {
+    public List<ProductResponseDTO> getRecentlyViewedByUser(Long userId, int limit) {
         userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -176,13 +181,14 @@ public class PopularityServiceImpl implements PopularityService {
                 .map(obj -> (Product) obj)
                 .distinct()
                 .limit(limit)
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<Product> getRecommendedProducts(Long userId, int limit) {
+    public List<ProductResponseDTO> getRecommendedProducts(Long userId, int limit) {
         // Get user's recently viewed products' categories
-        List<Product> recentlyViewed = getRecentlyViewedByUser(userId, 20);
+        List<ProductResponseDTO> recentlyViewed = getRecentlyViewedByUser(userId, 20);
         
         if (recentlyViewed.isEmpty()) {
             // If no history, return trending products
@@ -190,32 +196,36 @@ public class PopularityServiceImpl implements PopularityService {
         }
 
         // Get categories from recently viewed
-        Set<Long> categoryIds = recentlyViewed.stream()
-                .map(p -> p.getCategory() != null ? p.getCategory().getCatId() : null)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        // Find similar products in same categories, excluding already viewed
         Set<Long> viewedIds = recentlyViewed.stream()
-                .map(Product::getProId)
+                .map(ProductResponseDTO::getProId)
                 .collect(Collectors.toSet());
 
-        List<Product> recommendations = productReposity.findAll().stream()
-                .filter(p -> p.getCategory() != null && categoryIds.contains(p.getCategory().getCatId()))
+        List<ProductResponseDTO> recommendations = productReposity.findAll().stream()
                 .filter(p -> !viewedIds.contains(p.getProId()))
                 .sorted(Comparator.comparing(Product::getPopularityScore, Comparator.nullsLast(Comparator.reverseOrder())))
                 .limit(limit)
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
 
-        // Fill remaining slots with trending products if needed
-        if (recommendations.size() < limit) {
-            List<Product> trending = getTrendingProducts(limit - recommendations.size());
-            recommendations.addAll(trending.stream()
-                    .filter(p -> !viewedIds.contains(p.getProId()))
-                    .limit(limit - recommendations.size())
-                    .collect(Collectors.toList()));
-        }
-
         return recommendations;
+    }
+    
+    private ProductResponseDTO convertToDTO(Product product) {
+        ProductResponseDTO dto = new ProductResponseDTO();
+        dto.setProId(product.getProId());
+        dto.setProName(product.getProName());
+        dto.setProDesc(product.getProDesc());
+        dto.setProPrice(product.getProPrice());
+        dto.setProBrand(product.getProBrand());
+        dto.setStock(product.getStock());
+        dto.setAvailable(product.getAvailable());
+        dto.setReleaseDate(product.getReleaseDate());
+        if (product.getCategory() != null) {
+            dto.setCategoryName(product.getCategory().getCatName());
+        }
+        if (product.getImages() != null && !product.getImages().isEmpty()) {
+            dto.setImageName(product.getImages().get(0).getImageUrl());
+        }
+        return dto;
     }
 }

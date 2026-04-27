@@ -83,7 +83,7 @@ public class Product {
 
     private Boolean favourite;
 
-    // Images - loaded via JOIN FETCH in repository
+    @JsonIgnore
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ProductImage> images = new ArrayList<>();
