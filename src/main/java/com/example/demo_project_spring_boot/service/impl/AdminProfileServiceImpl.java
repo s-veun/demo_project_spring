@@ -112,6 +112,11 @@ public class AdminProfileServiceImpl implements AdminProfileService {
     }
 
     private AdminProfileResponse mapToAdminProfileResponse(User admin) {
+        // ✅ បន្ថែម statistics នៅទីនេះ
+        long totalUsers = userRepository.count();
+        long totalOrders = orderRepository.count();
+        long totalProducts = productReposity.count();
+
         return AdminProfileResponse.builder()
                 .id(admin.getId())
                 .username(admin.getUsername())
@@ -125,6 +130,10 @@ public class AdminProfileServiceImpl implements AdminProfileService {
                 .createdAt(admin.getCreatedAt())
                 .updatedAt(admin.getUpdatedAt())
                 .lastLoginAt(admin.getLastLoginAt())
+                // ✅ បន្ថែម 3 fields នេះ
+                .totalUsersManaged(totalUsers)
+                .totalOrdersManaged(totalOrders)
+                .totalProductsManaged(totalProducts)
                 .build();
     }
 }
