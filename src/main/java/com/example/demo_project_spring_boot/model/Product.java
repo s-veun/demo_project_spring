@@ -68,6 +68,11 @@ public class Product {
     @JoinColumn(name = "cat_id")
     private Category category;
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ProductImage> images = new ArrayList<>();
+
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private Date releaseDate;
 
@@ -82,11 +87,6 @@ public class Product {
     private String tags;
 
     private Boolean favourite;
-
-    @JsonIgnore
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<ProductImage> images = new ArrayList<>();
 
     // Reviews - ignore in JSON to avoid recursion / lazy issues
     @JsonIgnore
