@@ -53,7 +53,6 @@ public class Product {
 
     // ════════════════════════════════════════════════════
     // Transient fields — មិនរក្សាទុកក្នុង DB
-    // ប៉ុន្តែបង្ហាញក្នុង JSON response
     // ════════════════════════════════════════════════════
 
     @Transient
@@ -62,11 +61,9 @@ public class Product {
     @Transient
     private String categoryName;
 
-    // ★ ថ្មី: imageUrl — រូបភាពទីមួយ (primary image)
     @Transient
     private String imageUrl;
 
-    // ★ ថ្មី: imageUrls — រូបភាពទាំងអស់ (multiple images)
     @Transient
     private List<String> imageUrls;
 
@@ -79,11 +76,16 @@ public class Product {
     @JoinColumn(name = "cat_id")
     private Category category;
 
-    // images រក្សា @JsonIgnore — ប្រើ @PostLoad ជំនួសវិញ
     @JsonIgnore
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ProductImage> images = new ArrayList<>();
+
+    // ★ បន្ថែមចំណុចនេះដើម្បីដោះស្រាយ Error ពេល Delete (SQLState: 23503)
+    @JsonIgnore
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ProductView> productViews = new ArrayList<>();
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private Date releaseDate;
@@ -96,7 +98,7 @@ public class Product {
     private Boolean favourite;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Review> reviews = new ArrayList<>();
 
@@ -117,23 +119,10 @@ public class Product {
     // Lifecycle Hooks
     // ════════════════════════════════════════════════════
 
-    /**
-     * ★ KEY FIX ★
-     *
-     * @PostLoad ត្រូវបាន JPA call ដោយស្វ័យប្រវត្តិ
-     * បន្ទាប់ពី load Product ពី Database រួច។
-     *
-     * វា copy imageUrl ពី images list ទៅ transient field
-     * ដូច្នេះ GET /products និង GET /products/{id}
-     * នឹងបង្ហាញ imageUrl ដោយស្វ័យប្រវត្តិ — មិនចាំបាច់
-     * កែ code ណាទៀតទេ!
-     */
     @PostLoad
     public void populateImageFields() {
         if (this.images != null && !this.images.isEmpty()) {
-            // រូបភាពទីមួយ → imageUrl
             this.imageUrl = this.images.get(0).getImageUrl();
-            // រូបភាពទាំងអស់ → imageUrls
             this.imageUrls = this.images.stream()
                     .map(ProductImage::getImageUrl)
                     .collect(Collectors.toList());
@@ -142,11 +131,14 @@ public class Product {
 
     @PrePersist
     protected void onCreate() {
+        // Initialize Lists
         if (this.images == null)        this.images        = new ArrayList<>();
         if (this.reviews == null)       this.reviews       = new ArrayList<>();
         if (this.variants == null)      this.variants      = new ArrayList<>();
         if (this.inventoryLogs == null) this.inventoryLogs = new ArrayList<>();
+        if (this.productViews == null)  this.productViews  = new ArrayList<>();
 
+        // Set Defaults
         if (this.available == null)     this.available     = true;
         if (this.favourite == null)     this.favourite     = false;
         if (this.rating == null)        this.rating        = 0.0;
