@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: Saveun2032
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,12 +17,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - product-net
 
   api:
     build: .
     container_name: ecommerce-api
     ports:
-      - "8088:8088"
+      - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: default
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ecommerce_db
@@ -31,6 +33,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - product-net
 
 volumes:
   postgres_data:
+
+networks:
+  product-net:
+    external: true

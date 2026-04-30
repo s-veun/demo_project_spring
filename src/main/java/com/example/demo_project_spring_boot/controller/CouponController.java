@@ -3,6 +3,12 @@ package com.example.demo_project_spring_boot.controller;
 import com.example.demo_project_spring_boot.dto.CouponsRequestDto;
 import com.example.demo_project_spring_boot.dto.CouponResponseDto;
 import com.example.demo_project_spring_boot.service.CouponService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/coupons")
 @RequiredArgsConstructor
+@Tag(name = "Coupons", description = "Coupon management APIs")
 public class CouponController {
 
     private final CouponService couponService;
@@ -24,7 +31,16 @@ public class CouponController {
 
     // ឆែកមើលថាកូដហ្នឹងប្រើបានឬអត់ (បញ្ចូល Code តាម URL parameters)
     @GetMapping("/validate")
-    public ResponseEntity<?> validateCoupon(@RequestParam String code) {
+    @Operation(summary = "Validate coupon code",
+            description = "Check if a coupon code is valid and get discount information")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Coupon is valid"),
+            @ApiResponse(responseCode = "400", description = "Coupon is invalid or expired")
+    })
+    public ResponseEntity<?> validateCoupon(
+            @RequestParam
+            @Parameter(description = "Coupon code to validate", required = true)
+            String code) {
         try {
             CouponResponseDto response = couponService.validateAndGetCoupon(code);
             return ResponseEntity.ok(response);
@@ -39,6 +55,13 @@ public class CouponController {
 
     @PostMapping("/add")
     @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Create new coupon (Admin only)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Coupon created successfully"),
+            @ApiResponse(responseCode = "400", description = "Bad request"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     public ResponseEntity<?> createCoupon(@RequestBody CouponsRequestDto requestDto) {
         try {
             CouponResponseDto response = couponService.createCoupon(requestDto);
@@ -50,13 +73,30 @@ public class CouponController {
 
     @GetMapping("/all")
     @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Get all coupons (Admin only)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of all coupons"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     public ResponseEntity<List<CouponResponseDto>> getAllCoupons() {
         return ResponseEntity.ok(couponService.getAllCoupons());
     }
 
     @PutMapping("/{couponId}/toggle")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<String> toggleCoupon(@PathVariable Long couponId) {
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Toggle coupon status (Admin only)",
+            description = "Enable/disable a coupon")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Coupon status updated successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "404", description = "Coupon not found")
+    })
+    public ResponseEntity<String> toggleCoupon(
+            @PathVariable
+            @Parameter(description = "Coupon ID to toggle", required = true)
+            Long couponId) {
         try {
             couponService.toggleCouponStatus(couponId);
             return ResponseEntity.ok("ស្ថានភាពកូដបញ្ចុះតម្លៃត្រូវបានកែប្រែជោគជ័យ!");
@@ -67,7 +107,17 @@ public class CouponController {
 
     @DeleteMapping("/{couponId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<String> deleteCoupon(@PathVariable Long couponId) {
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Delete coupon (Admin only)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Coupon deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "404", description = "Coupon not found")
+    })
+    public ResponseEntity<String> deleteCoupon(
+            @PathVariable
+            @Parameter(description = "Coupon ID to delete", required = true)
+            Long couponId) {
         try {
             couponService.deleteCoupon(couponId);
             return ResponseEntity.ok("លុបកូដបញ្ចុះតម្លៃជោគជ័យ!");

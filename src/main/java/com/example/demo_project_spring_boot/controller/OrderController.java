@@ -4,12 +4,16 @@ import com.example.demo_project_spring_boot.dto.OrderItemResponseDto;
 import com.example.demo_project_spring_boot.dto.OrderRequestDto; // 🌟 កុំភ្លេច Import DTO នេះ
 import com.example.demo_project_spring_boot.dto.OrderResponseDto;
 import com.example.demo_project_spring_boot.model.Order;
-import com.example.demo_project_spring_boot.Enum.OrderStatus;
 import com.example.demo_project_spring_boot.repository.OrderRepository;
 import com.example.demo_project_spring_boot.service.OrderService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -19,6 +23,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/orders")
 @RequiredArgsConstructor
+@Tag(name = "Orders", description = "Order management APIs")
 public class OrderController {
 
     private final OrderService orderService;
@@ -27,6 +32,12 @@ public class OrderController {
     // ១. API សម្រាប់បញ្ជាទិញ (Checkout)
     // 🌟 កែពី /{userId}/checkout មកជា /checkout ទទេវិញ ហើយទទួលយក @RequestBody
     @PostMapping("/checkout")
+    @Operation(summary = "Place new order (Checkout)",
+            description = "Create a new order from cart items")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Order placed successfully"),
+            @ApiResponse(responseCode = "400", description = "Bad request or insufficient stock")
+    })
     public ResponseEntity<?> checkout(@RequestBody OrderRequestDto requestDto) {
         try {
             // 🌟 បោះ requestDto ចូលទៅក្នុង Service
@@ -40,7 +51,15 @@ public class OrderController {
 
     // ២. API សម្រាប់មើលប្រវត្តិទិញទំនិញទាំងអស់របស់ User ម្នាក់ (Order History)
     @GetMapping("/{userId}/history")
-    public ResponseEntity<List<OrderResponseDto>> getOrderHistory(@PathVariable Long userId) {
+    @Operation(summary = "Get order history",
+            description = "Retrieve all orders for a specific user")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Order history retrieved successfully")
+    })
+    public ResponseEntity<List<OrderResponseDto>> getOrderHistory(
+            @PathVariable
+            @Parameter(description = "User ID", required = true)
+            Long userId) {
 
         List<Order> orders = orderRepository.findByUser_IdOrderByOrderDateDesc(userId);
 
@@ -53,7 +72,17 @@ public class OrderController {
 
     @PutMapping("/{orderId}/cancel")
     @Transactional
-    public ResponseEntity<OrderResponseDto> cancelOrder(@PathVariable Long orderId) {
+    @Operation(summary = "Cancel order",
+            description = "Cancel an existing order (if not yet shipped)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Order cancelled successfully"),
+            @ApiResponse(responseCode = "400", description = "Cannot cancel this order"),
+            @ApiResponse(responseCode = "404", description = "Order not found")
+    })
+    public ResponseEntity<OrderResponseDto> cancelOrder(
+            @PathVariable
+            @Parameter(description = "Order ID to cancel", required = true)
+            Long orderId) {
 
         Order cancelledOrder = orderService.cancelOrder(orderId);
 

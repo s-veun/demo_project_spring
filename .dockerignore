@@ -1,6 +1,12 @@
 .gradle/
 build/
 .idea/
+ .vscode/
+.classpath
+.project
+bin/
+out/
+target/
 *.iml
 .git/
 .gitignore

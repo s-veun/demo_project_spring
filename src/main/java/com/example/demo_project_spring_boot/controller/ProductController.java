@@ -7,6 +7,9 @@ import com.example.demo_project_spring_boot.service.PopularityService;
 import com.example.demo_project_spring_boot.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -63,19 +66,39 @@ public class ProductController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Add new product (Admin only) — use form-data")
+    @Operation(summary = "Add new product (Admin only) — use form-data",
+            description = "Create a new product with multipart form-data. All string fields except tags should be trimmed.")
+    @RequestBody(description = "Product data as multipart form-data",
+            required = true,
+            content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                    schema = @Schema(description = "Product form data")))
     public ResponseEntity<?> addProduct(
-            @RequestParam(value = "proName", required = false) String proName,
-            @RequestParam(value = "proDesc", required = false) String proDesc,
-            @RequestParam(value = "proPrice", required = false) BigDecimal proPrice,
-            @RequestParam(value = "proBrand", required = false) String proBrand,
-            @RequestParam(value = "quantity", required = false) Integer quantity,
-            @RequestParam(value = "discount", required = false,
-                    defaultValue = "0") Double discount,
-            @RequestParam(value = "tags", required = false,
-                    defaultValue = "") String tags,
-            @RequestParam(value = "categoryId", required = false) Long categoryId,
+            @RequestParam(value = "proName", required = false)
+            @Parameter(description = "Product name (required)", required = true)
+            String proName,
+            @RequestParam(value = "proDesc", required = false)
+            @Parameter(description = "Product description (required)", required = true)
+            String proDesc,
+            @RequestParam(value = "proPrice", required = false)
+            @Parameter(description = "Product price (required)", required = true)
+            BigDecimal proPrice,
+            @RequestParam(value = "proBrand", required = false)
+            @Parameter(description = "Product brand (required)", required = true)
+            String proBrand,
+            @RequestParam(value = "quantity", required = false)
+            @Parameter(description = "Product quantity (required)", required = true)
+            Integer quantity,
+            @RequestParam(value = "discount", required = false, defaultValue = "0")
+            @Parameter(description = "Discount percentage (optional, default: 0)")
+            Double discount,
+            @RequestParam(value = "tags", required = false, defaultValue = "")
+            @Parameter(description = "Product tags, comma-separated (optional)")
+            String tags,
+            @RequestParam(value = "categoryId", required = false)
+            @Parameter(description = "Category ID (optional)")
+            Long categoryId,
             @RequestParam(value = "imageFile", required = false)
+            @Parameter(description = "Product image file (optional, image only)")
             MultipartFile imageFile) {
         try {
             // Validate required fields
@@ -134,18 +157,42 @@ public class ProductController {
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Update product (Admin only) — use form-data")
+    @Operation(summary = "Update product (Admin only) — use form-data",
+            description = "Update an existing product with multipart form-data. All fields are optional and will only update if provided.")
+    @RequestBody(description = "Updated product data as multipart form-data",
+            required = true,
+            content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                    schema = @Schema(description = "Updated product form data")))
     public ResponseEntity<?> updateProduct(
-            @PathVariable Long proId,
-            @RequestParam(value = "proName", required = false) String proName,
-            @RequestParam(value = "proDesc", required = false) String proDesc,
-            @RequestParam(value = "proPrice", required = false) BigDecimal proPrice,
-            @RequestParam(value = "proBrand", required = false) String proBrand,
-            @RequestParam(value = "quantity", required = false) Integer quantity,
-            @RequestParam(value = "discount", required = false) Double discount,
-            @RequestParam(value = "tags", required = false) String tags,
-            @RequestParam(value = "categoryId", required = false) Long categoryId,
+            @PathVariable
+            @Parameter(description = "Product ID to update", required = true)
+            Long proId,
+            @RequestParam(value = "proName", required = false)
+            @Parameter(description = "Product name (optional)")
+            String proName,
+            @RequestParam(value = "proDesc", required = false)
+            @Parameter(description = "Product description (optional)")
+            String proDesc,
+            @RequestParam(value = "proPrice", required = false)
+            @Parameter(description = "Product price (optional)")
+            BigDecimal proPrice,
+            @RequestParam(value = "proBrand", required = false)
+            @Parameter(description = "Product brand (optional)")
+            String proBrand,
+            @RequestParam(value = "quantity", required = false)
+            @Parameter(description = "Product quantity (optional)")
+            Integer quantity,
+            @RequestParam(value = "discount", required = false)
+            @Parameter(description = "Discount percentage (optional)")
+            Double discount,
+            @RequestParam(value = "tags", required = false)
+            @Parameter(description = "Product tags, comma-separated (optional)")
+            String tags,
+            @RequestParam(value = "categoryId", required = false)
+            @Parameter(description = "Category ID (optional)")
+            Long categoryId,
             @RequestParam(value = "imageFile", required = false)
+            @Parameter(description = "New product image file (optional, replaces existing image)")
             MultipartFile imageFile) {
         try {
             // For update, we can allow partial updates

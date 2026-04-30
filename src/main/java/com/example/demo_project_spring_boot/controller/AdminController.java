@@ -16,6 +16,9 @@ import com.example.demo_project_spring_boot.service.OrderService;
 import com.example.demo_project_spring_boot.service.ProductService;
 import com.example.demo_project_spring_boot.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -602,10 +605,18 @@ public ResponseEntity<?> searchUsers(@RequestBody UserSearchRequest request) {
     @GetMapping("/products/low-stock")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Get products with low stock")
+    @Operation(summary = "Get products with low stock",
+            description = "Retrieve products that have stock quantity below the specified threshold")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of low stock products"),
+            @ApiResponse(responseCode = "400", description = "Bad request"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     @Transactional(readOnly = true) // ✅ បន្ថែមនេះ
     public ResponseEntity<?> getLowStockProducts(
-            @RequestParam(defaultValue = "10") Integer threshold) {
+            @RequestParam(defaultValue = "10")
+            @Parameter(description = "Stock threshold level (default: 10)", required = false)
+            Integer threshold) {
         try {
             List<Map<String, Object>> lowStockProducts = productReposity.findAll().stream()
                     .filter(p -> p.getStock() != null && p.getStock() <= threshold)
@@ -650,7 +661,13 @@ public ResponseEntity<?> searchUsers(@RequestBody UserSearchRequest request) {
     @GetMapping("/products/out-of-stock")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Get products that are out of stock")
+    @Operation(summary = "Get products that are out of stock",
+            description = "Retrieve all products with zero stock")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of out-of-stock products"),
+            @ApiResponse(responseCode = "400", description = "Bad request"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     @Transactional(readOnly = true) // ✅ បន្ថែមនេះ
     public ResponseEntity<?> getOutOfStockProducts() {
         try {
@@ -696,10 +713,22 @@ public ResponseEntity<?> searchUsers(@RequestBody UserSearchRequest request) {
     @PutMapping("/products/{productId}/stock")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Update product stock quantity")
+    @Operation(summary = "Update product stock quantity",
+            description = "Update the stock quantity for a product with optional reason")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Stock updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid stock quantity"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "404", description = "Product not found")
+    })
     public ResponseEntity<?> updateProductStock(
-            @PathVariable Long productId,
-            @RequestBody Map<String, Object> request) {
+            @PathVariable
+            @Parameter(description = "Product ID to update", required = true)
+            Long productId,
+            @RequestBody
+            @Parameter(description = "Stock update request with stock quantity and reason",
+                    required = true)
+            Map<String, Object> request) {
         try {
             Product product = productReposity.findById(productId)
                     .orElseThrow(() -> new RuntimeException("Product not found"));

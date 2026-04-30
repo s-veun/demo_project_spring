@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -76,14 +77,16 @@ public class Product {
     @JoinColumn(name = "cat_id")
     private Category category;
 
+    // ✅ ប្រើ EAGER + @BatchSize ដើម្បីទាញ images ក្នុង 1 query តែប៉ុណ្ណោះ
     @JsonIgnore
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @BatchSize(size = 30)
     @Builder.Default
     private List<ProductImage> images = new ArrayList<>();
 
-    // ★ បន្ថែមចំណុចនេះដើម្បីដោះស្រាយ Error ពេល Delete (SQLState: 23503)
     @JsonIgnore
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 30)
     @Builder.Default
     private List<ProductView> productViews = new ArrayList<>();
 
@@ -99,16 +102,19 @@ public class Product {
 
     @JsonIgnore
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 30)
     @Builder.Default
     private List<Review> reviews = new ArrayList<>();
 
     @JsonIgnore
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 30)
     @Builder.Default
     private List<ProductVariant> variants = new ArrayList<>();
 
     @JsonIgnore
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 30)
     @Builder.Default
     private List<InventoryLog> inventoryLogs = new ArrayList<>();
 
@@ -119,6 +125,7 @@ public class Product {
     // Lifecycle Hooks
     // ════════════════════════════════════════════════════
 
+    // ✅ @PostLoad មិនបណ្តាល N+1 ទៀតទេ ព្រោះ images ត្រូវបាន EAGER load រួចហើយ
     @PostLoad
     public void populateImageFields() {
         if (this.images != null && !this.images.isEmpty()) {
@@ -131,14 +138,12 @@ public class Product {
 
     @PrePersist
     protected void onCreate() {
-        // Initialize Lists
         if (this.images == null)        this.images        = new ArrayList<>();
         if (this.reviews == null)       this.reviews       = new ArrayList<>();
         if (this.variants == null)      this.variants      = new ArrayList<>();
         if (this.inventoryLogs == null) this.inventoryLogs = new ArrayList<>();
         if (this.productViews == null)  this.productViews  = new ArrayList<>();
 
-        // Set Defaults
         if (this.available == null)     this.available     = true;
         if (this.favourite == null)     this.favourite     = false;
         if (this.rating == null)        this.rating        = 0.0;
