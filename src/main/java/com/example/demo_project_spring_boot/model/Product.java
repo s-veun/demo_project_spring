@@ -77,12 +77,11 @@ public class Product {
     @JoinColumn(name = "cat_id")
     private Category category;
 
-    // ✅ ប្រើ EAGER + @BatchSize ដើម្បីទាញ images ក្នុង 1 query តែប៉ុណ្ណោះ
     @JsonIgnore
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
-    @BatchSize(size = 30)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<ProductImage> images = new ArrayList<>();
+
 
     @JsonIgnore
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
