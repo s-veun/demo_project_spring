@@ -8,10 +8,17 @@ COPY build.gradle .
 COPY settings.gradle .
 
 RUN chmod +x gradlew
-RUN --mount=type=cache,target=/root/.gradle ./gradlew dependencies --no-daemon
+
+# ✅ FIX: បន្ថែម id=gradle-cache នៅ --mount=type=cache
+RUN --mount=type=cache,id=gradle-cache,target=/root/.gradle \
+    ./gradlew dependencies --no-daemon
 
 COPY src src
-RUN --mount=type=cache,target=/root/.gradle ./gradlew bootJar --no-daemon
+
+# ✅ FIX: បន្ថែម id=gradle-cache នៅ --mount=type=cache
+RUN --mount=type=cache,id=gradle-cache,target=/root/.gradle \
+    ./gradlew bootJar --no-daemon
+
 RUN cp build/libs/*.jar app.jar
 
 FROM eclipse-temurin:21-jre-alpine
@@ -26,4 +33,7 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
 
-ENTRYPOINT ["java", "-Dspring.profiles.active=default", "-Dspring.autoconfigure.exclude=com.google.cloud.spring.autoconfigure.sql.GcpCloudSqlAutoConfiguration", "-jar", "app.jar"]
+ENTRYPOINT ["java", \
+    "-Dspring.profiles.active=default", \
+    "-Dspring.autoconfigure.exclude=com.google.cloud.spring.autoconfigure.sql.GcpCloudSqlAutoConfiguration", \
+    "-jar", "app.jar"]
