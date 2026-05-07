@@ -9,16 +9,11 @@ COPY settings.gradle .
 
 RUN chmod +x gradlew
 
-# ✅ FIX: បន្ថែម id=gradle-cache នៅ --mount=type=cache
-RUN --mount=type=cache,id=gradle-cache,target=/root/.gradle \
-    ./gradlew dependencies --no-daemon
+# ✅ FIX: លុប --mount=type=cache ចេញទាំងស្រុង — Railway មិន support
+RUN ./gradlew dependencies --no-daemon
 
 COPY src src
-
-# ✅ FIX: បន្ថែម id=gradle-cache នៅ --mount=type=cache
-RUN --mount=type=cache,id=gradle-cache,target=/root/.gradle \
-    ./gradlew bootJar --no-daemon
-
+RUN ./gradlew bootJar --no-daemon
 RUN cp build/libs/*.jar app.jar
 
 FROM eclipse-temurin:21-jre-alpine
