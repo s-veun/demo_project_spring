@@ -58,13 +58,13 @@ public class SecurityConfig {
                         // ០.5 Preflight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // ១. Swagger & OpenAPI (កែសម្រួលបន្ថែមឱ្យពេញលេញសម្រាប់ Railway)
+                        // ១. Swagger
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
+                                "/swagger-ui/index.html",
                                 "/v3/api-docs/**",
                                 "/v3/api-docs",
-                                "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
 
@@ -74,7 +74,7 @@ public class SecurityConfig {
                                 "/api/v1/login"
                         ).permitAll()
 
-                        // ៣. Public — Admin Auth
+                        // ✅ ៣. Public — Admin Auth (មុន admin/** rule)
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/admin/register",
                                 "/api/v1/admin/login"
@@ -86,20 +86,26 @@ public class SecurityConfig {
                                 "/api/v1/categories/**"
                         ).permitAll()
 
-                        // ៥. Actuator (សម្រាប់ Railway Health Check)
-                        .requestMatchers("/actuator/**", "/actuator/health").permitAll()
+                        // ៥. Actuator
+                        .requestMatchers("/actuator/health").permitAll()
 
                         // ៦. ADMIN — Products
-                        .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT,
+                                "/api/v1/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE,
+                                "/api/v1/products/**").hasRole("ADMIN")
 
                         // ៧. ADMIN — Categories
-                        .requestMatchers(HttpMethod.POST, "/api/v1/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT,
+                                "/api/v1/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE,
+                                "/api/v1/categories/**").hasRole("ADMIN")
 
-                        // ៨. ADMIN — All other admin routes
+                        // ✅ ៨. ADMIN — All admin routes (បន្ទាប់ public admin routes)
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
                         // ៩. USER + ADMIN
@@ -113,14 +119,14 @@ public class SecurityConfig {
                 )
 
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter,
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        // ប្រើ Default Constructor ដើម្បីជៀសវាង Error: incompatible types
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
@@ -136,20 +142,16 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-
-        // បន្ថែម Domain របស់ Railway ទៅក្នុង CORS ដើម្បីឱ្យ Frontend អាច Call បាន
-        config.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "https://demoprojectspring-production.up.railway.app"
-        ));
-
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        config.setAllowedOrigins(List.of("http://localhost:3000"));
+        config.setAllowedMethods(List.of(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }
