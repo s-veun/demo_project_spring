@@ -4,8 +4,6 @@ import com.example.demo_project_spring_boot.dto.MultipleImageUploadRequest;
 import com.example.demo_project_spring_boot.dto.SingleImageUploadRequest;
 import com.example.demo_project_spring_boot.service.CloudinaryService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -19,7 +17,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -57,7 +57,7 @@ public class FileUploadController {
             return ResponseEntity.badRequest().body("Only image files are allowed");
         }
         try {
-            Map uploadResult = cloudinaryService.uploadImage(file, folder);
+            Map<String, Object> uploadResult = cloudinaryService.uploadImage(file, folder);
             Map<String, Object> response = new HashMap<>();
             response.put("url",      uploadResult.get("secure_url"));
             response.put("publicId", uploadResult.get("public_id"));
@@ -141,8 +141,6 @@ public class FileUploadController {
     @PostMapping(value = "/upload-multiple-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<?> uploadMultipleImages(
-            // ✅ KEY FIX: @ModelAttribute ជំនួស @RequestParam
-            // Swagger នឹងអាន Schema ពី DTO class ផ្ទាល់
             @ModelAttribute MultipleImageUploadRequest request) {
 
         MultipartFile[] files  = request.getFiles();
@@ -151,8 +149,10 @@ public class FileUploadController {
         if (files == null || files.length == 0) {
             return ResponseEntity.badRequest().body("No files provided");
         }
+
         try {
-            Map<String, Object> responses = new HashMap<>();
+            // ✅ FIX: ប្រើ List ជំនួស Map — avoid filename collision
+            List<Map<String, Object>> uploadedFiles = new ArrayList<>();
             int successCount = 0;
             int failCount    = 0;
 
@@ -162,27 +162,38 @@ public class FileUploadController {
                         && file.getContentType().startsWith("image/")) {
                     try {
                         Map uploadResult = cloudinaryService.uploadImage(file, folder);
-                        responses.put(file.getOriginalFilename(), Map.of(
-                                "url",      uploadResult.get("secure_url"),
-                                "publicId", uploadResult.get("public_id"),
-                                "status",   "success"
-                        ));
+
+                        Map<String, Object> fileInfo = new HashMap<>();
+                        // ✅ រក្សា filename + index ដើម្បី unique
+                        fileInfo.put("filename",  file.getOriginalFilename());
+                        fileInfo.put("url",       uploadResult.get("secure_url"));
+                        fileInfo.put("publicId",  uploadResult.get("public_id"));
+                        fileInfo.put("size",      uploadResult.get("bytes"));
+                        fileInfo.put("format",    uploadResult.get("format"));
+                        fileInfo.put("status",    "success");
+
+                        uploadedFiles.add(fileInfo);
                         successCount++;
+
                     } catch (IOException e) {
-                        responses.put(file.getOriginalFilename(), Map.of(
-                                "status", "failed",
-                                "error",  e.getMessage()
-                        ));
+                        Map<String, Object> fileInfo = new HashMap<>();
+                        fileInfo.put("filename", file.getOriginalFilename());
+                        fileInfo.put("status",   "failed");
+                        fileInfo.put("error",    e.getMessage());
+
+                        uploadedFiles.add(fileInfo);
                         failCount++;
                     }
                 }
             }
 
             Map<String, Object> result = new HashMap<>();
-            result.put("files",        responses);
+            result.put("files",        uploadedFiles);  // ✅ List — បង្ហាញគ្រប់ files
             result.put("successCount", successCount);
             result.put("failCount",    failCount);
+
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to upload images: " + e.getMessage());
