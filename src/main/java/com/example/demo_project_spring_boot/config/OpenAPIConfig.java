@@ -22,11 +22,6 @@ import java.util.List;
 @Configuration
 public class OpenAPIConfig {
 
-    // ✅ FIX #1: ប្រាប់ Swagger ថា MultipartFile = binary file
-    static {
-        SpringDocUtils.getConfig()
-                .replaceWithSchema(MultipartFile.class, new BinarySchema());
-    }
 
     @Bean
     public OpenAPI customOpenAPI() {
