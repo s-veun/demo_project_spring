@@ -49,84 +49,62 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
 
                         // ០. Root, Error, Favicon
-                        .requestMatchers(
-                                "/",
-                                "/error",
-                                "/favicon.ico"
-                        ).permitAll()
+                        .requestMatchers("/", "/error", "/favicon.ico").permitAll()
 
                         // ០.5 Preflight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // ១. Swagger
+                        // ១. Swagger & OpenAPI Paths
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/swagger-ui/index.html",
                                 "/v3/api-docs/**",
                                 "/v3/api-docs",
+                                "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
 
-                        // ២. Public — User Auth
+                        // ២. Public Auth Routes
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/register",
-                                "/api/v1/login"
-                        ).permitAll()
-
-                        // ✅ ៣. Public — Admin Auth (មុន admin/** rule)
-                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/login",
                                 "/api/v1/admin/register",
                                 "/api/v1/admin/login"
                         ).permitAll()
 
-                        // ៤. Public — Products & Categories GET
+                        // ៣. Public GET Routes (Products/Categories)
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/products/**",
                                 "/api/v1/categories/**"
                         ).permitAll()
 
-                        // ៥. Actuator
-                        .requestMatchers("/actuator/health").permitAll()
+                        // ៤. Monitoring (Actuator)
+                        .requestMatchers("/actuator/**", "/actuator/health").permitAll()
 
-                        // ៦. ADMIN — Products
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/v1/products/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT,
-                                "/api/v1/products/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE,
-                                "/api/v1/products/**").hasRole("ADMIN")
-
-                        // ៧. ADMIN — Categories
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/v1/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT,
-                                "/api/v1/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE,
-                                "/api/v1/categories/**").hasRole("ADMIN")
-
-                        // ✅ ៨. ADMIN — All admin routes (បន្ទាប់ public admin routes)
+                        // ៥. ADMIN Authorities
+                        .requestMatchers(HttpMethod.POST, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
-                        // ៩. USER + ADMIN
+                        // ៦. Authenticated Users
                         .requestMatchers(
                                 "/api/v1/me",
                                 "/api/v1/profile/**"
                         ).hasAnyRole("USER", "ADMIN")
 
-                        // ១០. ផ្លូវផ្សេងទាំងអស់
                         .anyRequest().authenticated()
                 )
 
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
+        // ប្រើ Default Constructor ដើម្បីជៀសវាងបញ្ហា Type Incompatibility
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
@@ -134,24 +112,30 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000"));
-        config.setAllowedMethods(List.of(
-                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+
+        // បន្ថែម Domain របស់ Railway ចូលទៅក្នុង Allowed Origins
+        config.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                "https://demoprojectspring-production.up.railway.app"
+        ));
+
+        // អនុញ្ញាតឱ្យ Swagger UI ផ្ញើ Request បានទោះបីប្រើ Domain ផ្សេងគ្នា
+        config.addAllowedOriginPattern("*");
+
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }
