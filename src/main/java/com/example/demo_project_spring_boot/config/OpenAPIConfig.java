@@ -15,6 +15,7 @@ import io.swagger.v3.oas.models.servers.Server;
 import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -22,10 +23,10 @@ import java.util.List;
 @Configuration
 public class OpenAPIConfig {
 
+    // ★ KEY FIX — ត្រូវដាក់នៅ static block ដើម្បី run មុន Spring context
     static {
-        // ← នេះជា key fix: បង្ខំ Swagger UI render MultipartFile ជា file picker button
         SpringDocUtils.getConfig()
-                .replaceWithClass(MultipartFile.class, org.springframework.core.io.Resource.class);
+                .replaceWithClass(MultipartFile.class, Resource.class);
     }
 
     @Bean
@@ -68,6 +69,7 @@ public class OpenAPIConfig {
                 .addSecurityItem(new SecurityRequirement()
                         .addList(securitySchemeName))
                 .components(new Components()
+                        // Schema សម្រាប់ Single file upload
                         .addSchemas("FileUpload", new Schema<>()
                                 .type("object")
                                 .addProperty("file", new BinarySchema()
@@ -75,14 +77,18 @@ public class OpenAPIConfig {
                                 .addProperty("folder", new StringSchema()
                                         ._default("uploads")
                                         .description("Destination folder")))
+
+                        // Schema សម្រាប់ Multiple files upload
                         .addSchemas("MultipleFileUpload", new Schema<>()
                                 .type("object")
                                 .addProperty("files", new ArraySchema()
-                                        .items(new BinarySchema()
-                                                .description("Image files")))
+                                        .items(new BinarySchema())
+                                        .description("Image files to upload"))
                                 .addProperty("folder", new StringSchema()
                                         ._default("uploads")
                                         .description("Destination folder")))
+
+                        // Security scheme (JWT)
                         .addSecuritySchemes(securitySchemeName,
                                 new SecurityScheme()
                                         .name(securitySchemeName)

@@ -150,7 +150,7 @@ public class FileUploadController {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // ៤. Upload multiple images  ← MAIN FIX
+    // ៤. Upload multiple images — FINAL FIX
     // ─────────────────────────────────────────────────────────────
     @Operation(
             summary = "Upload multiple images at once",
