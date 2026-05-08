@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -37,16 +38,27 @@ public class FileUploadController {
     // ─────────────────────────────────────────────────────────────
     // ១. Upload single image
     // ─────────────────────────────────────────────────────────────
-    @Operation(summary = "Upload a single image")
+    @Operation(
+            summary = "Upload a single image",
+            requestBody = @RequestBody(                          // ← ref ទៅ schema "FileUpload"
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(ref = "#/components/schemas/FileUpload")
+                    )
+            )
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Uploaded successfully",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "400", description = "Invalid or empty file"),
             @ApiResponse(responseCode = "500", description = "Upload failed")
     })
     @PostMapping(value = "/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<?> uploadImage(@ModelAttribute SingleImageUploadRequest request) {
+    public ResponseEntity<?> uploadImage(
+            @ModelAttribute SingleImageUploadRequest request) {
 
         MultipartFile file   = request.getFile();
         String        folder = request.getFolder();
@@ -57,7 +69,8 @@ public class FileUploadController {
 
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Only image files are allowed"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Only image files are allowed"));
         }
 
         try {
@@ -69,7 +82,6 @@ public class FileUploadController {
             response.put("height",   uploadResult.get("height"));
             response.put("format",   uploadResult.get("format"));
             response.put("size",     uploadResult.get("bytes"));
-
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -80,10 +92,25 @@ public class FileUploadController {
     // ─────────────────────────────────────────────────────────────
     // ២. Upload any file
     // ─────────────────────────────────────────────────────────────
-    @Operation(summary = "Upload any file type")
+    @Operation(
+            summary = "Upload any file type",
+            requestBody = @RequestBody(                          // ← ref ទៅ schema "FileUpload"
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(ref = "#/components/schemas/FileUpload")
+                    )
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Uploaded successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid or empty file"),
+            @ApiResponse(responseCode = "500", description = "Upload failed")
+    })
     @PostMapping(value = "/upload-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<?> uploadFile(@ModelAttribute SingleImageUploadRequest request) {
+    public ResponseEntity<?> uploadFile(
+            @ModelAttribute SingleImageUploadRequest request) {
 
         MultipartFile file   = request.getFile();
         String        folder = request.getFolder();
@@ -100,7 +127,6 @@ public class FileUploadController {
             response.put("resourceType", uploadResult.get("resource_type"));
             response.put("format",       uploadResult.get("format"));
             response.put("size",         uploadResult.get("bytes"));
-
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -112,10 +138,15 @@ public class FileUploadController {
     // ៣. Delete file
     // ─────────────────────────────────────────────────────────────
     @Operation(summary = "Delete a file — Admin only")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Deleted successfully"),
+            @ApiResponse(responseCode = "500", description = "Delete failed")
+    })
     @DeleteMapping("/delete")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> deleteFile(@Parameter(description = "Public ID of the file to delete")
-                                        @RequestParam("publicId") String publicId) {
+    public ResponseEntity<?> deleteFile(
+            @Parameter(description = "Public ID of the file to delete", required = true)
+            @RequestParam("publicId") String publicId) {
         try {
             cloudinaryService.deleteFile(publicId);
             return ResponseEntity.ok(Map.of("message", "File deleted successfully"));
@@ -126,16 +157,26 @@ public class FileUploadController {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // ៤. Upload multiple images (ស្នូលនៃការដោះស្រាយ)
+    // ៤. Upload multiple images  ← KEY FIX
     // ─────────────────────────────────────────────────────────────
-    @Operation(summary = "Upload multiple images at once")
+    @Operation(
+            summary = "Upload multiple images at once",
+            requestBody = @RequestBody(                          // ← ref ទៅ schema "MultipleFileUpload"
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(ref = "#/components/schemas/MultipleFileUpload")
+                    )
+            )
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Processed successfully"),
             @ApiResponse(responseCode = "400", description = "No files provided")
     })
     @PostMapping(value = "/upload-multiple-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<?> uploadMultipleImages(@ModelAttribute MultipleImageUploadRequest request) {
+    public ResponseEntity<?> uploadMultipleImages(
+            @ModelAttribute MultipleImageUploadRequest request) {
 
         MultipartFile[] files  = request.getFiles();
         String          folder = request.getFolder();
@@ -155,8 +196,8 @@ public class FileUploadController {
             if (contentType == null || !contentType.startsWith("image/")) {
                 uploadedFiles.add(Map.of(
                         "filename", file.getOriginalFilename(),
-                        "status", "failed",
-                        "error", "Not an image file"
+                        "status",   "failed",
+                        "error",    "Not an image file"
                 ));
                 failCount++;
                 continue;
@@ -170,14 +211,14 @@ public class FileUploadController {
                 fileInfo.put("url",      uploadResult.get("secure_url"));
                 fileInfo.put("publicId", uploadResult.get("public_id"));
                 fileInfo.put("status",   "success");
-
                 uploadedFiles.add(fileInfo);
                 successCount++;
+
             } catch (IOException e) {
                 uploadedFiles.add(Map.of(
                         "filename", file.getOriginalFilename(),
-                        "status", "failed",
-                        "error", e.getMessage()
+                        "status",   "failed",
+                        "error",    e.getMessage()
                 ));
                 failCount++;
             }
@@ -186,9 +227,9 @@ public class FileUploadController {
         Map<String, Object> finalResult = new HashMap<>();
         finalResult.put("files", uploadedFiles);
         finalResult.put("summary", Map.of(
-                "total", files.length,
+                "total",   files.length,
                 "success", successCount,
-                "failed", failCount
+                "failed",  failCount
         ));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(finalResult);
