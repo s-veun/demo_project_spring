@@ -12,13 +12,21 @@ import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
+import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @Configuration
 public class OpenAPIConfig {
+
+    static {
+        // ← នេះជា key fix: បង្ខំ Swagger UI render MultipartFile ជា file picker button
+        SpringDocUtils.getConfig()
+                .replaceWithClass(MultipartFile.class, org.springframework.core.io.Resource.class);
+    }
 
     @Bean
     public OpenAPI customOpenAPI() {
@@ -51,18 +59,15 @@ public class OpenAPIConfig {
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0.html")))
                 .servers(List.of(
-                        // ១. URL សម្រាប់ Production នៅលើ Railway
                         new Server()
                                 .url("https://demoprojectspring-production.up.railway.app")
                                 .description("🚀 Production Server (Railway)"),
-                        // ២. URL សម្រាប់ Local Development
                         new Server()
                                 .url("http://localhost:8080")
                                 .description("💻 Local Development Server")))
                 .addSecurityItem(new SecurityRequirement()
                         .addList(securitySchemeName))
                 .components(new Components()
-                        // Schema សម្រាប់ Single file upload
                         .addSchemas("FileUpload", new Schema<>()
                                 .type("object")
                                 .addProperty("file", new BinarySchema()
@@ -70,8 +75,6 @@ public class OpenAPIConfig {
                                 .addProperty("folder", new StringSchema()
                                         ._default("uploads")
                                         .description("Destination folder")))
-
-                        // Schema សម្រាប់ Multiple files upload
                         .addSchemas("MultipleFileUpload", new Schema<>()
                                 .type("object")
                                 .addProperty("files", new ArraySchema()
@@ -80,8 +83,6 @@ public class OpenAPIConfig {
                                 .addProperty("folder", new StringSchema()
                                         ._default("uploads")
                                         .description("Destination folder")))
-
-                        // Security scheme (JWT)
                         .addSecuritySchemes(securitySchemeName,
                                 new SecurityScheme()
                                         .name(securitySchemeName)
