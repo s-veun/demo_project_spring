@@ -12,16 +12,13 @@ import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
-import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @Configuration
 public class OpenAPIConfig {
-
 
     @Bean
     public OpenAPI customOpenAPI() {
@@ -32,21 +29,20 @@ public class OpenAPIConfig {
                         .title("E-Commerce API")
                         .version("1.0.0")
                         .description("""
-                                Complete E-Commerce REST API with Spring Boot
-
-                                **Features:**
+                                ## 🚀 Complete E-Commerce REST API
+                                
+                                **សមត្ថភាពសំខាន់ៗ:**
                                 - User Authentication & Authorization (JWT)
                                 - Product Management with Cloudinary
                                 - Shopping Cart & Orders
                                 - Reviews & Ratings
                                 - Wishlist & Popularity Tracking
-                                - Admin Dashboard Analytics
-
-                                **How to Authenticate:**
-                                1. Login via POST /api/v1/login
-                                2. Copy the token from response
-                                3. Click Authorize button above
-                                4. Enter: Bearer <your-token>
+                                
+                                **របៀបប្រើប្រាស់ Authentication:**
+                                1. Login តាមរយៈ `POST /api/v1/login`
+                                2. ចម្លង (Copy) Token ចេញពី Response
+                                3. ចុចប៊ូតុង **Authorize** ខាងលើ
+                                4. វាយពាក្យ: `Bearer <your-token>`
                                 """)
                         .contact(new Contact()
                                 .name("API Support")
@@ -55,16 +51,18 @@ public class OpenAPIConfig {
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0.html")))
                 .servers(List.of(
+                        // ១. URL សម្រាប់ Production នៅលើ Railway
                         new Server()
                                 .url("https://demoprojectspring-production.up.railway.app")
                                 .description("🚀 Production Server (Railway)"),
+                        // ២. URL សម្រាប់ Local Development
                         new Server()
                                 .url("http://localhost:8080")
                                 .description("💻 Local Development Server")))
                 .addSecurityItem(new SecurityRequirement()
                         .addList(securitySchemeName))
                 .components(new Components()
-                        // ✅ FIX #2: Schema សម្រាប់ single file upload
+                        // Schema សម្រាប់ Single file upload
                         .addSchemas("FileUpload", new Schema<>()
                                 .type("object")
                                 .addProperty("file", new BinarySchema()
@@ -73,23 +71,23 @@ public class OpenAPIConfig {
                                         ._default("uploads")
                                         .description("Destination folder")))
 
-                        // ✅ FIX #3: Schema សម្រាប់ multiple files upload
+                        // Schema សម្រាប់ Multiple files upload
                         .addSchemas("MultipleFileUpload", new Schema<>()
                                 .type("object")
                                 .addProperty("files", new ArraySchema()
                                         .items(new BinarySchema()
-                                                .description("Image file")))
+                                                .description("Image files")))
                                 .addProperty("folder", new StringSchema()
                                         ._default("uploads")
                                         .description("Destination folder")))
 
-                        // ✅ Security scheme (JWT)
+                        // Security scheme (JWT)
                         .addSecuritySchemes(securitySchemeName,
                                 new SecurityScheme()
                                         .name(securitySchemeName)
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
                                         .bearerFormat("JWT")
-                                        .description("Enter JWT token (without Bearer prefix)")));
+                                        .description("សូមបញ្ចូលតែ Token (មិនបាច់ថែមពាក្យ Bearer ពីមុខទេ)")));
     }
 }
