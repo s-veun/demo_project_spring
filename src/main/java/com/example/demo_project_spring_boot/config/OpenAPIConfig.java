@@ -6,32 +6,52 @@ import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.media.ArraySchema;
-import io.swagger.v3.oas.models.media.BinarySchema;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
-import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.Resource;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @Configuration
 public class OpenAPIConfig {
 
-    // ★ KEY FIX — ត្រូវដាក់នៅ static block ដើម្បី run មុន Spring context
-    static {
-        SpringDocUtils.getConfig()
-                .replaceWithClass(MultipartFile.class, Resource.class);
-    }
+    // ✅ លុប static block SpringDocUtils.replaceWithClass ចេញទាំងស្រុង
+    // ព្រោះវាបំផ្លាញ List<MultipartFile> rendering
 
     @Bean
     public OpenAPI customOpenAPI() {
         final String securitySchemeName = "bearerAuth";
+
+        // ✅ Schema ត្រឹមត្រូវ: type=string, format=binary
+        // OpenAPI 3.0 specification តម្រូវឱ្យប្រើបែបនេះសម្រាប់ file upload
+        Schema<?> binarySchema = new Schema<>()
+                .type("string")
+                .format("binary");
+
+        Schema<?> singleFileUploadSchema = new Schema<>()
+                .type("object")
+                .addProperty("file", new Schema<>()
+                        .type("string")
+                        .format("binary")
+                        .description("រូបភាពដែលត្រូវ upload"))
+                .addProperty("folder", new StringSchema()
+                        ._default("uploads")
+                        .description("Folder គោលដៅ (ស្រេចចិត្ត)"));
+
+        Schema<?> multipleFileUploadSchema = new Schema<>()
+                .type("object")
+                .addProperty("files", new ArraySchema()
+                        .items(new Schema<>()
+                                .type("string")
+                                .format("binary"))
+                        .description("រូបភាពច្រើនដែលត្រូវ upload"))
+                .addProperty("folder", new StringSchema()
+                        ._default("uploads")
+                        .description("Folder គោលដៅ (ស្រេចចិត្ត)"));
 
         return new OpenAPI()
                 .info(new Info()
@@ -69,26 +89,8 @@ public class OpenAPIConfig {
                 .addSecurityItem(new SecurityRequirement()
                         .addList(securitySchemeName))
                 .components(new Components()
-                        // Schema សម្រាប់ Single file upload
-                        .addSchemas("FileUpload", new Schema<>()
-                                .type("object")
-                                .addProperty("file", new BinarySchema()
-                                        .description("Image file to upload"))
-                                .addProperty("folder", new StringSchema()
-                                        ._default("uploads")
-                                        .description("Destination folder")))
-
-                        // Schema សម្រាប់ Multiple files upload
-                        .addSchemas("MultipleFileUpload", new Schema<>()
-                                .type("object")
-                                .addProperty("files", new ArraySchema()
-                                        .items(new BinarySchema())
-                                        .description("Image files to upload"))
-                                .addProperty("folder", new StringSchema()
-                                        ._default("uploads")
-                                        .description("Destination folder")))
-
-                        // Security scheme (JWT)
+                        .addSchemas("FileUpload",         singleFileUploadSchema)
+                        .addSchemas("MultipleFileUpload", multipleFileUploadSchema)
                         .addSecuritySchemes(securitySchemeName,
                                 new SecurityScheme()
                                         .name(securitySchemeName)
