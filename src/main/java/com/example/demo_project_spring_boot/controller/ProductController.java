@@ -4,6 +4,7 @@ import com.example.demo_project_spring_boot.dto.ProductListDTO;
 import com.example.demo_project_spring_boot.dto.ProductRequestDTO;
 import com.example.demo_project_spring_boot.dto.ProductResponseDTO;
 import com.example.demo_project_spring_boot.model.Product;
+import com.example.demo_project_spring_boot.model.ProductImage;
 import com.example.demo_project_spring_boot.service.PopularityService;
 import com.example.demo_project_spring_boot.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,6 +25,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -109,6 +112,10 @@ public class ProductController {
             @Parameter(description = "Category ID (optional)")
             Long categoryId,
 
+            @RequestParam(value = "imageUrls", required = false)
+            @Parameter(description = "Pre-uploaded Cloudinary image URLs (optional)")
+            List<String> imageUrls,
+
             // ==================== ផ្នែកសំខាន់ ====================
             @RequestPart(value = "imageFile", required = false)
             @Parameter(
@@ -134,7 +141,7 @@ public class ProductController {
             dto.setTags(tags);
             dto.setCategoryId(categoryId);
 
-            Product savedProduct = productService.addProduct(dto, imageFile);
+            Product savedProduct = productService.addProduct(dto, imageFile, imageUrls);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
 
@@ -142,6 +149,41 @@ public class ProductController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    // ════════════════════════════════════════════════════
+    // 3.1 Upload Multiple Product Images by Product ID
+    // ════════════════════════════════════════════════════
+    @PostMapping(value = "/{proId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Upload multiple product images (Admin only)")
+    public ResponseEntity<?> uploadProductImages(
+            @PathVariable Long proId,
+            @RequestPart("files") List<MultipartFile> files) {
+        try {
+            List<ProductImage> images = productService.addProductImages(proId, files);
+
+            List<Map<String, Object>> imageItems = new ArrayList<>();
+            for (ProductImage image : images) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", image.getId());
+                item.put("url", image.getImageUrl());
+                item.put("publicId", image.getPublicId());
+                imageItems.add(item);
+            }
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "productId", proId,
+                    "uploadedCount", imageItems.size(),
+                    "images", imageItems
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ════════════════════════════════════════════════════
     // 4. Search Products — ✅ ប្រើ DTO
     // ════════════════════════════════════════════════════

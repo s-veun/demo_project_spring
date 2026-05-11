@@ -55,7 +55,7 @@ public class ProductServiceImpl implements ProductService {
     // ADD PRODUCT
     // ════════════════════════════════════════════════════
     @Override
-    public Product addProduct(ProductRequestDTO request, MultipartFile imageFile) throws IOException {
+    public Product addProduct(ProductRequestDTO request, MultipartFile imageFile, List<String> imageUrls) throws IOException {
         String trimmedName = request.getProName().trim();
 
         if (productReposity.existsByProName(trimmedName)) {
@@ -83,12 +83,33 @@ public class ProductServiceImpl implements ProductService {
         Product savedProduct = productReposity.save(product);
         populateCategoryInfo(savedProduct);
 
-        // ==================== IMAGE UPLOAD ====================
-        if (imageFile != null && !imageFile.isEmpty()) {
+        // ==================== IMAGE LINKS FROM PRE-UPLOAD ====================
+        if (imageUrls != null && !imageUrls.isEmpty()) {
+            List<String> cleanedUrls = imageUrls.stream()
+                    .filter(url -> url != null && !url.isBlank())
+                    .toList();
+
+            for (String imageUrl : cleanedUrls) {
+                ProductImage productImage = new ProductImage();
+                productImage.setImageUrl(imageUrl);
+                productImage.setPublicId(null);
+                productImage.setProduct(savedProduct);
+                productImageRepository.save(productImage);
+                savedProduct.getImages().add(productImage);
+            }
+
+            if (!cleanedUrls.isEmpty()) {
+                savedProduct.setImageUrl(cleanedUrls.get(0));
+                savedProduct.setImageUrls(cleanedUrls);
+            }
+        }
+
+        // ==================== FALLBACK: DIRECT FILE UPLOAD ====================
+        else if (imageFile != null && !imageFile.isEmpty()) {
             try {
                 System.out.println("🔄 Uploading image to Cloudinary... File size: " + imageFile.getSize() + " bytes");
 
-                Map uploadResult = cloudinaryService.uploadImage(imageFile, "products");
+                Map<?, ?> uploadResult = cloudinaryService.uploadImage(imageFile, "products");
 
                 if (uploadResult == null) {
                     System.err.println("❌ Cloudinary returned null result!");
@@ -96,7 +117,7 @@ public class ProductServiceImpl implements ProductService {
                 }
 
                 String uploadedUrl = uploadResult.get("secure_url").toString();
-                String publicId    = uploadResult.get("public_id").toString();
+                String publicId = uploadResult.get("public_id").toString();
 
                 System.out.println("✅ Image uploaded successfully: " + uploadedUrl);
 
@@ -112,13 +133,51 @@ public class ProductServiceImpl implements ProductService {
 
             } catch (Exception e) {
                 System.err.println("❌ Cloudinary Upload Error: " + e.getMessage());
-                e.printStackTrace();
                 // បន្តដំណើរការ បើមិនចង់ឱ្យ upload បរាជ័យទាំងផលិតផល
                 // throw e;   // បើចង់បញ្ឈប់ សូម uncomment
             }
         }
 
         return savedProduct;
+    }
+
+    // ════════════════════════════════════════════════════
+    // ADD MULTIPLE IMAGES TO EXISTING PRODUCT
+    // ════════════════════════════════════════════════════
+    @Override
+    public List<ProductImage> addProductImages(Long productId, List<MultipartFile> files) throws IOException {
+        Product existingProduct = productReposity.findByIdWithImages(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product : " + productId + " Not Found"));
+
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("At least one image file is required");
+        }
+
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                continue;
+            }
+
+            Map<?, ?> uploadResult = cloudinaryService.uploadImage(file, "products");
+            String uploadedUrl = uploadResult.get("secure_url").toString();
+            String publicId = uploadResult.get("public_id").toString();
+
+            ProductImage productImage = new ProductImage();
+            productImage.setImageUrl(uploadedUrl);
+            productImage.setPublicId(publicId);
+            productImage.setProduct(existingProduct);
+            productImageRepository.save(productImage);
+            existingProduct.getImages().add(productImage);
+        }
+
+        Product updatedProduct = productReposity.save(existingProduct);
+        updatedProduct.populateImageFields();
+        return updatedProduct.getImages();
     }
 
     // ════════════════════════════════════════════════════
@@ -168,7 +227,7 @@ public class ProductServiceImpl implements ProductService {
                 }
             }
 
-            Map uploadResult = cloudinaryService.uploadImage(imageFile, "products");
+            Map<?, ?> uploadResult = cloudinaryService.uploadImage(imageFile, "products");
             String uploadedUrl = uploadResult.get("secure_url").toString();
             String publicId    = uploadResult.get("public_id").toString();
 
