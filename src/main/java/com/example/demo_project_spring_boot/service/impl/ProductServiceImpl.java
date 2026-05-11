@@ -55,14 +55,22 @@ public class ProductServiceImpl implements ProductService {
     // ADD PRODUCT
     // ════════════════════════════════════════════════════
     @Override
-    public Product addProduct(ProductRequestDTO request, MultipartFile imageFile, List<String> imageUrls) throws IOException {
+    public Product addProduct(
+            ProductRequestDTO request,
+            MultipartFile imageFile,
+            List<String> imageUrls
+    ) throws IOException {
+
         String trimmedName = request.getProName().trim();
 
         if (productReposity.existsByProName(trimmedName)) {
-            throw new DuplicateResourceException("Product Name : '" + trimmedName + "' Already Exists");
+            throw new DuplicateResourceException(
+                    "Product Name : '" + trimmedName + "' Already Exists"
+            );
         }
 
         Product product = new Product();
+
         product.setProName(trimmedName);
         product.setProDesc(request.getProDesc());
         product.setProPrice(request.getProPrice());
@@ -70,113 +78,148 @@ public class ProductServiceImpl implements ProductService {
         product.setStock(request.getQuantity());
         product.setDiscount(request.getDiscount());
         product.setTags(request.getTags());
-        product.setAvailable(true);
-        product.setFavourite(false);
-        product.setRating(0.0);
 
+        // category
         if (request.getCategoryId() != null) {
-            Category category = categoryRepository.findById(request.getCategoryId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Category : " + request.getCategoryId() + " Not Found"));
+
+            Category category = categoryRepository
+                    .findById(request.getCategoryId())
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException(
+                                    "Category Not Found"
+                            ));
+
             product.setCategory(category);
         }
 
         Product savedProduct = productReposity.save(product);
-        populateCategoryInfo(savedProduct);
 
-        // ==================== IMAGE LINKS FROM PRE-UPLOAD ====================
+        // =========================================
+        // PRE-UPLOADED IMAGE URLS
+        // =========================================
+
         if (imageUrls != null && !imageUrls.isEmpty()) {
-            List<String> cleanedUrls = imageUrls.stream()
-                    .filter(url -> url != null && !url.isBlank())
-                    .toList();
 
-            for (String imageUrl : cleanedUrls) {
-                ProductImage productImage = new ProductImage();
-                productImage.setImageUrl(imageUrl);
-                productImage.setPublicId(null);
-                productImage.setProduct(savedProduct);
-                productImageRepository.save(productImage);
-                savedProduct.getImages().add(productImage);
-            }
+            int index = 0;
 
-            if (!cleanedUrls.isEmpty()) {
-                savedProduct.setImageUrl(cleanedUrls.get(0));
-                savedProduct.setImageUrls(cleanedUrls);
-            }
-        }
+            for (String imageUrl : imageUrls) {
 
-        // ==================== FALLBACK: DIRECT FILE UPLOAD ====================
-        else if (imageFile != null && !imageFile.isEmpty()) {
-            try {
-                System.out.println("🔄 Uploading image to Cloudinary... File size: " + imageFile.getSize() + " bytes");
-
-                Map<?, ?> uploadResult = cloudinaryService.uploadImage(imageFile, "products");
-
-                if (uploadResult == null) {
-                    System.err.println("❌ Cloudinary returned null result!");
-                    throw new RuntimeException("Cloudinary upload failed - null response");
+                if (imageUrl == null || imageUrl.isBlank()) {
+                    continue;
                 }
 
-                String uploadedUrl = uploadResult.get("secure_url").toString();
-                String publicId = uploadResult.get("public_id").toString();
-
-                System.out.println("✅ Image uploaded successfully: " + uploadedUrl);
-
-                ProductImage productImage = new ProductImage();
-                productImage.setImageUrl(uploadedUrl);
-                productImage.setPublicId(publicId);
-                productImage.setProduct(savedProduct);
-                productImageRepository.save(productImage);
+                ProductImage productImage =
+                        ProductImage.builder()
+                                .imageUrl(imageUrl)
+                                .publicId(null)
+                                .thumbnail(index == 0)
+                                .sortOrder(index)
+                                .product(savedProduct)
+                                .build();
 
                 savedProduct.getImages().add(productImage);
-                savedProduct.setImageUrl(uploadedUrl);
-                savedProduct.setImageUrls(List.of(uploadedUrl));
 
-            } catch (Exception e) {
-                System.err.println("❌ Cloudinary Upload Error: " + e.getMessage());
-                // បន្តដំណើរការ បើមិនចង់ឱ្យ upload បរាជ័យទាំងផលិតផល
-                // throw e;   // បើចង់បញ្ឈប់ សូម uncomment
+                index++;
             }
         }
 
-        return savedProduct;
+        // =========================================
+        // FALLBACK SINGLE IMAGE
+        // =========================================
+
+        else if (imageFile != null && !imageFile.isEmpty()) {
+
+            Map<?, ?> uploadResult =
+                    cloudinaryService.uploadImage(
+                            imageFile,
+                            "products"
+                    );
+
+            ProductImage productImage =
+                    ProductImage.builder()
+                            .imageUrl(
+                                    uploadResult.get("secure_url")
+                                            .toString()
+                            )
+                            .publicId(
+                                    uploadResult.get("public_id")
+                                            .toString()
+                            )
+                            .thumbnail(true)
+                            .sortOrder(0)
+                            .product(savedProduct)
+                            .build();
+
+            savedProduct.getImages().add(productImage);
+        }
+
+        return productReposity.save(savedProduct);
     }
 
     // ════════════════════════════════════════════════════
     // ADD MULTIPLE IMAGES TO EXISTING PRODUCT
     // ════════════════════════════════════════════════════
     @Override
-    public List<ProductImage> addProductImages(Long productId, List<MultipartFile> files) throws IOException {
-        Product existingProduct = productReposity.findByIdWithImages(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product : " + productId + " Not Found"));
+    public List<ProductImage> addProductImages(
+            Long productId,
+            List<MultipartFile> files
+    ) throws IOException {
+
+        Product product = productReposity
+                .findByIdWithImages(productId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Product Not Found"
+                        ));
 
         if (files == null || files.isEmpty()) {
-            throw new IllegalArgumentException("At least one image file is required");
+            throw new IllegalArgumentException(
+                    "At least one image is required"
+            );
         }
 
+        int currentSize = product.getImages().size();
+
         for (MultipartFile file : files) {
+
             if (file == null || file.isEmpty()) {
                 continue;
             }
 
             String contentType = file.getContentType();
-            if (contentType == null || !contentType.startsWith("image/")) {
+
+            if (contentType == null
+                    || !contentType.startsWith("image/")) {
                 continue;
             }
 
-            Map<?, ?> uploadResult = cloudinaryService.uploadImage(file, "products");
-            String uploadedUrl = uploadResult.get("secure_url").toString();
-            String publicId = uploadResult.get("public_id").toString();
+            Map<?, ?> uploadResult =
+                    cloudinaryService.uploadImage(
+                            file,
+                            "products"
+                    );
 
-            ProductImage productImage = new ProductImage();
-            productImage.setImageUrl(uploadedUrl);
-            productImage.setPublicId(publicId);
-            productImage.setProduct(existingProduct);
-            productImageRepository.save(productImage);
-            existingProduct.getImages().add(productImage);
+            ProductImage productImage =
+                    ProductImage.builder()
+                            .imageUrl(
+                                    uploadResult.get("secure_url")
+                                            .toString()
+                            )
+                            .publicId(
+                                    uploadResult.get("public_id")
+                                            .toString()
+                            )
+                            .thumbnail(product.getImages().isEmpty())
+                            .sortOrder(currentSize++)
+                            .product(product)
+                            .build();
+
+            product.getImages().add(productImage);
         }
 
-        Product updatedProduct = productReposity.save(existingProduct);
-        updatedProduct.populateImageFields();
+        Product updatedProduct =
+                productReposity.save(product);
+
         return updatedProduct.getImages();
     }
 

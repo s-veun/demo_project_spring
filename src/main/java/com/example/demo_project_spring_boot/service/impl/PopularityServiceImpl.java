@@ -224,7 +224,7 @@ public class PopularityServiceImpl implements PopularityService {
             dto.setCategoryName(product.getCategory().getCatName());
         }
         if (product.getImages() != null && !product.getImages().isEmpty()) {
-            dto.setImageName(product.getImages().get(0).getImageUrl());
+            dto.setThumbnailImage(product.getImages().get(0).getImageUrl());
         }
         return dto;
     }
