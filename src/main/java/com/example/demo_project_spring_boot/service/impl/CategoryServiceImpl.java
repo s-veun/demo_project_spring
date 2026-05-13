@@ -1,6 +1,8 @@
 package com.example.demo_project_spring_boot.service.impl;
 
 import com.example.demo_project_spring_boot.dto.CategoryDTO;
+import com.example.demo_project_spring_boot.exception.DuplicateResourceException;
+import com.example.demo_project_spring_boot.exception.ResourceNotFoundException;
 import com.example.demo_project_spring_boot.model.Category;
 import com.example.demo_project_spring_boot.repository.CategoryRepository;
 import com.example.demo_project_spring_boot.service.CategoryService;
@@ -21,15 +23,28 @@ public class CategoryServiceImpl implements CategoryService {
         return new CategoryDTO(
                 category.getCatId(),
                 category.getCatName(),
-                category.getCatDesc()
+                category.getSlug(),
+                category.getCatDesc(),
+                category.getImageUrl(),
+                category.getIsActive(),
+                category.getSortOrder()
         );
+    }
+
+    private String normalizeSlug(String source) {
+        if (source == null) return null;
+        return source.toLowerCase().trim().replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
     }
 
     // 🛠 មុខងារជំនួយទី២៖ បំប្លែងពី DTO ទៅជា Entity (សម្រាប់ Save ចូល Database)
     private Category mapToEntity(CategoryDTO dto) {
         Category category = new Category();
         category.setCatName(dto.getCatName());
+        category.setSlug(dto.getSlug() == null || dto.getSlug().isBlank() ? normalizeSlug(dto.getCatName()) : normalizeSlug(dto.getSlug()));
         category.setCatDesc(dto.getCatDesc());
+        category.setImageUrl(dto.getImageUrl());
+        category.setIsActive(dto.getIsActive() == null ? Boolean.TRUE : dto.getIsActive());
+        category.setSortOrder(dto.getSortOrder() == null ? 0 : dto.getSortOrder());
         return category;
     }
 
@@ -37,7 +52,15 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryDTO createCategory(CategoryDTO categoryDTO) {
         // ឆែកមើលក្រែងលោមានឈ្មោះជាន់គ្នា
         if (categoryRepository.existsByCatName(categoryDTO.getCatName())) {
-            throw new RuntimeException("ឈ្មោះប្រភេទ '" + categoryDTO.getCatName() + "' មានរួចហើយ!");
+            throw new DuplicateResourceException("ឈ្មោះប្រភេទ '" + categoryDTO.getCatName() + "' មានរួចហើយ!");
+        }
+
+        String slug = categoryDTO.getSlug() == null || categoryDTO.getSlug().isBlank()
+                ? normalizeSlug(categoryDTO.getCatName())
+                : normalizeSlug(categoryDTO.getSlug());
+
+        if (slug != null && categoryRepository.existsBySlug(slug)) {
+            throw new DuplicateResourceException("Slug '" + slug + "' មានរួចហើយ!");
         }
 
         // ១. បំប្លែង DTO ទៅ Entity
@@ -62,18 +85,34 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryDTO getCategoryById(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("រកមិនឃើញ Category លេខ: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("រកមិនឃើញ Category លេខ: " + id));
         return mapToDTO(category);
     }
 
     @Override
     public CategoryDTO updateCategory(Long id, CategoryDTO categoryDTO) {
         Category existingCategory = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("រកមិនឃើញ Category លេខ: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("រកមិនឃើញ Category លេខ: " + id));
+
+        String nextSlug = categoryDTO.getSlug() == null || categoryDTO.getSlug().isBlank()
+                ? normalizeSlug(categoryDTO.getCatName())
+                : normalizeSlug(categoryDTO.getSlug());
+
+        if (categoryRepository.existsByCatNameAndCatIdNot(categoryDTO.getCatName(), id)) {
+            throw new DuplicateResourceException("ឈ្មោះប្រភេទ '" + categoryDTO.getCatName() + "' មានរួចហើយ!");
+        }
+
+        if (nextSlug != null && categoryRepository.existsBySlugAndCatIdNot(nextSlug, id)) {
+            throw new DuplicateResourceException("Slug '" + nextSlug + "' មានរួចហើយ!");
+        }
 
         // Update ព័ត៌មានថ្មី
         existingCategory.setCatName(categoryDTO.getCatName());
+        existingCategory.setSlug(nextSlug);
         existingCategory.setCatDesc(categoryDTO.getCatDesc());
+        existingCategory.setImageUrl(categoryDTO.getImageUrl());
+        existingCategory.setIsActive(categoryDTO.getIsActive() == null ? existingCategory.getIsActive() : categoryDTO.getIsActive());
+        existingCategory.setSortOrder(categoryDTO.getSortOrder() == null ? existingCategory.getSortOrder() : categoryDTO.getSortOrder());
 
         Category updatedCategory = categoryRepository.save(existingCategory);
         return mapToDTO(updatedCategory);
@@ -82,7 +121,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public void deleteCategory(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("រកមិនឃើញ Category លេខ: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("រកមិនឃើញ Category លេខ: " + id));
         categoryRepository.delete(category);
     }
 }

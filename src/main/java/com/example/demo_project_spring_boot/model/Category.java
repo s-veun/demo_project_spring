@@ -21,7 +21,10 @@ public class Category {
 
     @Column(nullable = false, unique = true)
     private String catName;
-    
+
+    @Column(unique = true)
+    private String slug;
+
     @Column(columnDefinition = "TEXT")
     private String catDesc;
     
@@ -54,6 +57,9 @@ public class Category {
     protected void onCreate() {
         if (this.isActive == null) this.isActive = true;
         if (this.sortOrder == null) this.sortOrder = 0;
+        if (this.slug == null || this.slug.isBlank()) {
+            this.slug = catName == null ? null : catName.toLowerCase().trim().replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
+        }
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
