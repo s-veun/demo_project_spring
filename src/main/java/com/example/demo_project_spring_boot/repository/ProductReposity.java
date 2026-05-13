@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -71,4 +72,38 @@ public interface ProductReposity extends JpaRepository<Product, Long>, JpaSpecif
         WHERE p.proId = :proId
     """)
     Optional<Product> findByIdWithImages(@Param("proId") Long proId);
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // NEW ARRIVAL QUERIES
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // ── Find new arrival products (created within N days) ─────────────────────
+    @Query("""
+        SELECT DISTINCT p FROM Product p
+        LEFT JOIN FETCH p.category
+        LEFT JOIN FETCH p.images
+        WHERE p.createdAt >= :cutoff
+        ORDER BY p.createdAt DESC
+    """)
+    List<Product> findNewArrivalProducts(@Param("cutoff") LocalDateTime cutoff);
+
+    // ── Find new arrival products with pagination ────────────────────────────
+    @Query(value = """
+        SELECT p.* FROM products p
+        WHERE p.created_at >= :cutoff
+        ORDER BY p.created_at DESC
+        LIMIT :limit OFFSET :offset
+    """, nativeQuery = true)
+    List<Product> findNewArrivalProductsWithPagination(
+            @Param("cutoff") LocalDateTime cutoff,
+            @Param("limit") Integer limit,
+            @Param("offset") Integer offset
+    );
+
+    // ── Count new arrival products ──────────────────────────────────────────
+    @Query("""
+        SELECT COUNT(p) FROM Product p
+        WHERE p.createdAt >= :cutoff
+    """)
+    Long countNewArrivalProducts(@Param("cutoff") LocalDateTime cutoff);
 }

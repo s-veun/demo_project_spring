@@ -1,5 +1,7 @@
 package com.example.demo_project_spring_boot.service.impl;
 
+import com.example.demo_project_spring_boot.dto.NewArrivalProductRequestDTO;
+import com.example.demo_project_spring_boot.dto.NewArrivalProductResponseDTO;
 import com.example.demo_project_spring_boot.dto.ProductListDTO;
 import com.example.demo_project_spring_boot.dto.ProductRequestDTO;
 import com.example.demo_project_spring_boot.exception.DuplicateResourceException;
@@ -18,8 +20,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -260,7 +267,7 @@ public class ProductServiceImpl implements ProductService {
 
         if (imageFile != null && !imageFile.isEmpty()) {
             if (!existingProduct.getImages().isEmpty()) {
-                ProductImage oldImage = existingProduct.getImages().get(0);
+                ProductImage oldImage = existingProduct.getImages().getFirst();
                 try {
                     cloudinaryService.deleteFile(oldImage.getPublicId());
                     productImageRepository.delete(oldImage);
@@ -329,5 +336,195 @@ public class ProductServiceImpl implements ProductService {
             product.setCategoryId(product.getCategory().getCatId());
             product.setCategoryName(product.getCategory().getCatName());
         }
+    }
+
+    private void populateImageInfo(Product product) {
+        if (product.getImages() != null && !product.getImages().isEmpty()) {
+            product.setImageUrl(product.getImages().getFirst().getImageUrl());
+            product.setImageUrls(product.getImages().stream()
+                    .map(ProductImage::getImageUrl)
+                    .collect(Collectors.toList()));
+        }
+    }
+
+    // ════════════════════════════════════════════════════
+    // ADD NEW ARRIVAL PRODUCT
+    // ════════════════════════════════════════════════════
+    @Override
+    public NewArrivalProductResponseDTO addNewArrivalProduct(
+            NewArrivalProductRequestDTO request,
+            MultipartFile imageFile,
+            List<String> imageUrls
+    ) throws IOException {
+
+        // Validate product name
+        String trimmedName = request.getProName().trim();
+        if (productReposity.existsByProName(trimmedName)) {
+            throw new DuplicateResourceException(
+                    "Product Name : '" + trimmedName + "' Already Exists"
+            );
+        }
+
+        // Create product entity
+        Product product = new Product();
+        product.setProName(trimmedName);
+        product.setProDesc(request.getProDesc());
+        product.setProPrice(request.getProPrice());
+        product.setProBrand(request.getProBrand());
+        product.setStock(request.getQuantity());
+        product.setDiscount(request.getDiscount());
+        product.setTags(request.getTags());
+        product.setAvailable(true);  // New arrivals are available by default
+
+        // Set release date
+        if (request.getReleaseDate() != null && !request.getReleaseDate().isEmpty()) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                Date releaseDate = sdf.parse(request.getReleaseDate());
+                product.setReleaseDate(releaseDate);
+            } catch (Exception e) {
+                product.setReleaseDate(new Date());  // Default to today
+            }
+        } else {
+            product.setReleaseDate(new Date());  // Default to today
+        }
+
+        // Set category if provided
+        if (request.getCategoryId() != null) {
+            Category category = categoryRepository
+                    .findById(request.getCategoryId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Category Not Found"
+                    ));
+            product.setCategory(category);
+        }
+
+        // Save product
+        Product savedProduct = productReposity.save(product);
+
+        // Handle pre-uploaded image URLs
+        if (imageUrls != null && !imageUrls.isEmpty()) {
+            int index = 0;
+            for (String imageUrl : imageUrls) {
+                if (imageUrl == null || imageUrl.isBlank()) {
+                    continue;
+                }
+                ProductImage productImage = ProductImage.builder()
+                        .imageUrl(imageUrl)
+                        .publicId(null)
+                        .thumbnail(index == 0)
+                        .sortOrder(index)
+                        .product(savedProduct)
+                        .build();
+                savedProduct.getImages().add(productImage);
+                index++;
+            }
+        }
+        // Fallback to single image upload
+        else if (imageFile != null && !imageFile.isEmpty()) {
+            Map<?, ?> uploadResult = cloudinaryService.uploadImage(imageFile, "products/arrivals");
+            ProductImage productImage = ProductImage.builder()
+                    .imageUrl(uploadResult.get("secure_url").toString())
+                    .publicId(uploadResult.get("public_id").toString())
+                    .thumbnail(true)
+                    .sortOrder(0)
+                    .product(savedProduct)
+                    .build();
+            savedProduct.getImages().add(productImage);
+        }
+
+        // Save with images
+        Product finalProduct = productReposity.save(savedProduct);
+
+        // Build and return response DTO
+        return buildNewArrivalResponseDTO(finalProduct, request.getDaysToShowAsNew());
+    }
+
+    // ════════════════════════════════════════════════════
+    // GET NEW ARRIVAL PRODUCTS (by days limit)
+    // ════════════════════════════════════════════════════
+    @Override
+    public List<NewArrivalProductResponseDTO> getNewArrivalProducts(Integer daysLimit) {
+        if (daysLimit == null || daysLimit <= 0) {
+            daysLimit = 30;  // Default: 30 days
+        }
+
+        final Integer limit = daysLimit;  // Make it effectively final for lambda
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(limit.longValue());
+        List<Product> products = productReposity.findNewArrivalProducts(cutoff);
+
+        return products.stream()
+                .map(product -> buildNewArrivalResponseDTO(product, limit))
+                .collect(Collectors.toList());
+    }
+
+    // ════════════════════════════════════════════════════
+    // GET NEW ARRIVAL PRODUCTS (with pagination)
+    // ════════════════════════════════════════════════════
+    @Override
+    public List<NewArrivalProductResponseDTO> getNewArrivalProducts(Integer limit, Integer offset) {
+        if (limit == null || limit <= 0) {
+            limit = 10;  // Default: 10 items per page
+        }
+        if (offset == null || offset < 0) {
+            offset = 0;  // Default: start from 0
+        }
+
+        Integer daysLimit = 30;  // Default: 30 days for new arrivals
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(daysLimit.longValue());
+        List<Product> products = productReposity.findNewArrivalProductsWithPagination(cutoff, limit, offset);
+
+        return products.stream()
+                .map(product -> buildNewArrivalResponseDTO(product, daysLimit))
+                .collect(Collectors.toList());
+    }
+
+    // ════════════════════════════════════════════════════
+    // HELPER: Build New Arrival Response DTO
+    // ════════════════════════════════════════════════════
+    private NewArrivalProductResponseDTO buildNewArrivalResponseDTO(Product product, Integer daysToShowAsNew) {
+        if (daysToShowAsNew == null || daysToShowAsNew <= 0) {
+            daysToShowAsNew = 30;
+        }
+
+        // Calculate if product is still considered "new"
+        long daysSinceCreation = ChronoUnit.DAYS.between(
+                product.getCreatedAt(),
+                LocalDateTime.now()
+        );
+        boolean isNew = daysSinceCreation <= daysToShowAsNew;
+
+        // Populate category info
+        populateCategoryInfo(product);
+        populateImageInfo(product);
+
+        // Build response
+        return NewArrivalProductResponseDTO.builder()
+                .proId(product.getProId())
+                .proName(product.getProName())
+                .sku(product.getSku())
+                .proDesc(product.getProDesc())
+                .proPrice(product.getProPrice())
+                .proBrand(product.getProBrand())
+                .discount(product.getDiscount())
+                .stock(product.getStock())
+                .tags(product.getTags())
+                .available(product.getAvailable())
+                .releaseDate(product.getReleaseDate())
+                .categoryName(product.getCategoryName())
+                .categoryId(product.getCategoryId())
+                .imageUrl(product.getImageUrl())
+                .imageUrls(product.getImageUrls())
+                .arrivalNotes("Newly arrived product on " +
+                        new SimpleDateFormat("yyyy-MM-dd").format(product.getReleaseDate()))
+                .daysToShowAsNew(daysToShowAsNew)
+                .createdAt(product.getCreatedAt())
+                .updatedAt(product.getUpdatedAt())
+                .isNew(isNew)
+                .weight(product.getWeight())
+                .length(product.getLength())
+                .width(product.getWidth())
+                .height(product.getHeight())
+                .build();
     }
 }

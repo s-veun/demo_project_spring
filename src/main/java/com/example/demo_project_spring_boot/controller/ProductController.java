@@ -1,5 +1,7 @@
 package com.example.demo_project_spring_boot.controller;
 
+import com.example.demo_project_spring_boot.dto.NewArrivalProductRequestDTO;
+import com.example.demo_project_spring_boot.dto.NewArrivalProductResponseDTO;
 import com.example.demo_project_spring_boot.dto.ProductListDTO;
 import com.example.demo_project_spring_boot.dto.ProductRequestDTO;
 import com.example.demo_project_spring_boot.dto.ProductResponseDTO;
@@ -125,7 +127,6 @@ public class ProductController {
             MultipartFile imageFile) {
 
         try {
-            // Validation (ដូចកូដដើមរបស់អ្នក)
             if (proName == null || proName.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Product name is required"));
             }
@@ -303,7 +304,186 @@ public class ProductController {
     }
 
     // ════════════════════════════════════════════════════
-    // 7. Popular — Most Viewed
+    // 7. New Arrival Product — Add
+    // ════════════════════════════════════════════════════
+    @PostMapping(value = "/new-arrivals", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "Add new arrival product (Admin only)",
+            description = "Create a new product marked as newly arrived with multipart form-data.",
+            tags = {"Products", "New Arrivals"})
+    public ResponseEntity<?> addNewArrivalProduct(
+            @RequestParam("proName")
+            @Parameter(description = "Product name (required)", required = true)
+            String proName,
+
+            @RequestParam("proDesc")
+            @Parameter(description = "Product description (required)", required = true)
+            String proDesc,
+
+            @RequestParam("proPrice")
+            @Parameter(description = "Product price (required)", required = true)
+            BigDecimal proPrice,
+
+            @RequestParam("proBrand")
+            @Parameter(description = "Product brand (required)", required = true)
+            String proBrand,
+
+            @RequestParam("quantity")
+            @Parameter(description = "Product quantity in stock (required)", required = true)
+            Integer quantity,
+
+            @RequestParam(value = "discount", defaultValue = "0")
+            @Parameter(description = "Discount percentage (optional, default: 0)")
+            Double discount,
+
+            @RequestParam(value = "tags", defaultValue = "")
+            @Parameter(description = "Product tags, comma-separated (optional)")
+            String tags,
+
+            @RequestParam(value = "categoryId", required = false)
+            @Parameter(description = "Category ID (optional)")
+            Long categoryId,
+
+            @RequestParam(value = "releaseDate", required = false)
+            @Parameter(description = "Release date in ISO 8601 format (yyyy-MM-dd) (optional, defaults to today)")
+            String releaseDate,
+
+            @RequestParam(value = "daysToShowAsNew", defaultValue = "30")
+            @Parameter(description = "Days to show product as 'New' (optional, default: 30)")
+            Integer daysToShowAsNew,
+
+            @RequestParam(value = "imageUrls", required = false)
+            @Parameter(description = "Pre-uploaded Cloudinary image URLs (optional)")
+            List<String> imageUrls,
+
+            @RequestPart(value = "imageFile", required = false)
+            @Parameter(
+                    description = "Product image file (optional)",
+                    schema = @Schema(type = "string", format = "binary")
+            )
+            MultipartFile imageFile) {
+
+        try {
+            // Validate required fields
+            if (proName == null || proName.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Product name is required"));
+            }
+            if (proPrice == null || proPrice.compareTo(BigDecimal.ZERO) < 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Product price must be positive"));
+            }
+            if (quantity == null || quantity < 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Quantity cannot be negative"));
+            }
+
+            // Build request DTO
+            NewArrivalProductRequestDTO dto = new NewArrivalProductRequestDTO();
+            dto.setProName(proName);
+            dto.setProDesc(proDesc);
+            dto.setProPrice(proPrice);
+            dto.setProBrand(proBrand);
+            dto.setQuantity(quantity);
+            dto.setDiscount(discount);
+            dto.setTags(tags);
+            dto.setCategoryId(categoryId);
+            dto.setReleaseDate(releaseDate);
+            dto.setDaysToShowAsNew(daysToShowAsNew);
+            dto.setIsNewArrival(true);
+            dto.setImageUrls(imageUrls);
+
+            // Call service
+            NewArrivalProductResponseDTO response = productService.addNewArrivalProduct(dto, imageFile, imageUrls);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "success", true,
+                    "message", "New arrival product created successfully",
+                    "data", response
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
+    }
+
+    // ════════════════════════════════════════════════════
+    // 7.1 Get New Arrival Products — by days limit
+    // ════════════════════════════════════════════════════
+    @GetMapping("/new-arrivals")
+    @Operation(
+            summary = "Get new arrival products",
+            description = "Retrieve products that arrived within the specified number of days",
+            tags = {"Products", "New Arrivals"})
+    public ResponseEntity<?> getNewArrivalProducts(
+            @RequestParam(value = "days", defaultValue = "30")
+            @Parameter(description = "Number of days to look back for arrivals (default: 30)")
+            Integer days) {
+
+        try {
+            List<NewArrivalProductResponseDTO> products = productService.getNewArrivalProducts(days);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "daysLimit", days,
+                    "count", products.size(),
+                    "data", products
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
+    }
+
+    // ════════════════════════════════════════════════════
+    // 7.2 Get New Arrival Products — with pagination
+    // ════════════════════════════════════════════════════
+    @GetMapping("/new-arrivals/paginated")
+    @Operation(
+            summary = "Get new arrival products with pagination",
+            description = "Retrieve paginated new arrival products",
+            tags = {"Products", "New Arrivals"})
+    public ResponseEntity<?> getNewArrivalProductsPaginated(
+            @RequestParam(value = "limit", defaultValue = "10")
+            @Parameter(description = "Number of products per page (default: 10)")
+            Integer limit,
+
+            @RequestParam(value = "page", defaultValue = "1")
+            @Parameter(description = "Page number (starts from 1, default: 1)")
+            Integer page) {
+
+        try {
+            // Validate pagination parameters
+            if (limit <= 0) limit = 10;
+            if (page <= 0) page = 1;
+
+            Integer offset = (page - 1) * limit;
+
+            List<NewArrivalProductResponseDTO> products = productService.getNewArrivalProducts(limit, offset);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "page", page,
+                    "limit", limit,
+                    "count", products.size(),
+                    "data", products
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
+    }
+
+    // ════════════════════════════════════════════════════
+    // 8. Popular — Most Viewed
     // ════════════════════════════════════════════════════
     @GetMapping("/popular/most-viewed")
     @Operation(summary = "Get most viewed products")
@@ -317,7 +497,7 @@ public class ProductController {
     }
 
     // ════════════════════════════════════════════════════
-    // 8. Popular — Most Purchased
+    // 9. Popular — Most Purchased
     // ════════════════════════════════════════════════════
     @GetMapping("/popular/most-purchased")
     @Operation(summary = "Get most purchased products")
@@ -331,7 +511,7 @@ public class ProductController {
     }
 
     // ════════════════════════════════════════════════════
-    // 9. Popular — Top Rated
+    // 10. Popular — Top Rated
     // ════════════════════════════════════════════════════
     @GetMapping("/popular/top-rated")
     @Operation(summary = "Get top rated products")
@@ -345,7 +525,7 @@ public class ProductController {
     }
 
     // ════════════════════════════════════════════════════
-    // 10. Popular — Trending
+    // 11. Popular — Trending
     // ════════════════════════════════════════════════════
     @GetMapping("/popular/trending")
     @Operation(summary = "Get trending products")
@@ -359,7 +539,7 @@ public class ProductController {
     }
 
     // ════════════════════════════════════════════════════
-    // 11. Analytics (Admin)
+    // 12. Analytics (Admin)
     // ════════════════════════════════════════════════════
     @GetMapping("/{proId}/analytics")
     @PreAuthorize("hasRole('ADMIN')")
