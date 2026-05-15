@@ -124,6 +124,12 @@ public class SecurityConfig {
                                 "/api/v1/admin/login"
                         ).permitAll()
 
+                        // Legacy UserController Auth Endpoints (deprecated - use /api/v1/auth/** instead)
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/register",
+                                "/api/v1/login"
+                        ).permitAll()
+
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/auth/oauth2/google",
                                 "/api/v1/auth/oauth2/facebook"

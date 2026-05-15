@@ -1,0 +1,366 @@
+{
+  "info": {
+    "name": "401 Unauthorized Fix - Testing Collection",
+    "description": "Complete testing guide for Spring Security 401 Unauthorized error and JWT Authentication",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "PUBLIC ENDPOINTS - No Authentication Required",
+      "item": [
+        {
+          "name": "1️⃣ Register New User (PUBLIC - Should work 201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "register"
+              ]
+            },
+            "description": "✅ PUBLIC endpoint - No authentication required\n\nExpected Response: 201 Created\n\nFIX: This endpoint was returning 401 because it wasn't in the permitAll() list in SecurityConfig. The fix adds it to permitAll()."
+          },
+          "response": []
+        },
+        {
+          "name": "2️⃣ Login User (PUBLIC - Should work 200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "✅ PUBLIC endpoint - No authentication required\n\nExpected Response: 200 OK with accessToken and refreshToken\n\nIMPORTANT: Copy the accessToken value and set it in the {{accessToken}} variable for subsequent protected endpoint tests."
+          },
+          "response": []
+        },
+        {
+          "name": "3️⃣ Modern Auth Register (PUBLIC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser2\",\n  \"email\": \"testuser2@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "✅ PUBLIC endpoint - Modern @AuthenticationController\n\nExpected Response: 201 Created"
+          },
+          "response": []
+        },
+        {
+          "name": "4️⃣ Continue with Google (PUBLIC)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/oauth2/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "oauth2",
+                "google"
+              ]
+            },
+            "description": "✅ PUBLIC endpoint - Information about Google OAuth2 flow\n\nExpected Response: 200 OK with authorizationUri"
+          },
+          "response": []
+        },
+        {
+          "name": "5️⃣ Continue with Facebook (PUBLIC)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/oauth2/facebook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "oauth2",
+                "facebook"
+              ]
+            },
+            "description": "✅ PUBLIC endpoint - Information about Facebook OAuth2 flow\n\nExpected Response: 200 OK with authorizationUri"
+          },
+          "response": []
+        },
+        {
+          "name": "6️⃣ Get Products (PUBLIC)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ]
+            },
+            "description": "✅ PUBLIC endpoint - Product listing\n\nExpected Response: 200 OK (or 204 if no products)"
+          },
+          "response": []
+        },
+        {
+          "name": "7️⃣ Swagger UI (PUBLIC)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/swagger-ui.html",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "swagger-ui.html"
+              ]
+            },
+            "description": "✅ PUBLIC endpoint - API documentation\n\nExpected Response: 200 OK (HTML page)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "PROTECTED ENDPOINTS - Authentication Required",
+      "item": [
+        {
+          "name": "❌ Try Profile Without Token (Should fail 401)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "user",
+                "profile"
+              ]
+            },
+            "description": "❌ PROTECTED endpoint - Requires authentication\n\nExpected Response: 401 Unauthorized\n\nThis demonstrates that protected endpoints are properly blocked without a valid JWT token."
+          },
+          "response": []
+        },
+        {
+          "name": "✅ Get Profile With Token (Should work 200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "user",
+                "profile"
+              ]
+            },
+            "description": "✅ PROTECTED endpoint with valid JWT token\n\nExpected Response: 200 OK with user profile\n\nIMPORTANT: You must first:\n1. Call \"Login User\" endpoint\n2. Copy the accessToken from response\n3. Set {{accessToken}} variable to the token value"
+          },
+          "response": []
+        },
+        {
+          "name": "🔄 Refresh Access Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh-token"
+              ]
+            },
+            "description": "✅ PUBLIC endpoint - Can be called without Authentication header\n\nExpected Response: 200 OK with new accessToken\n\nIMPORTANT: Use the refreshToken from the login response"
+          },
+          "response": []
+        },
+        {
+          "name": "🚪 Logout User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "✅ PROTECTED endpoint - Requires Authentication\n\nExpected Response: 200 OK\n\nThis revokes the session tokens in the database"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "DEBUGGING - Understanding the 401 Issue",
+      "item": [
+        {
+          "name": "🐛 Check Request Headers (Register)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"debuguser\",\n  \"email\": \"debug@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "register"
+              ]
+            },
+            "description": "📝 DEBUG REQUEST\n\nTo see all request/response headers:\n1. Open the request in Postman\n2. Send the request\n3. Click on the response\n4. Go to the \"Headers\" tab\n5. Look for:\n   - Request: Authorization header (should be empty/missing)\n   - Response: 201 Created (if fix is applied)\n\nIf you still see 401, it means the endpoint path is not in permitAll()"
+          },
+          "response": []
+        },
+        {
+          "name": "📊 Understanding the Auth Flow",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/swagger-ui.html?urls.primaryName=Social%20Authentication%20APIs#/Social%20Authentication%20APIs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "swagger-ui.html"
+              ]
+            },
+            "description": "📚 UNDERSTANDING THE FLOW\n\n1. CLIENT SENDS LOGIN REQUEST (no Authorization header):\n   POST /api/v1/auth/login\n   { \"username\": \"user\", \"password\": \"pass\" }\n   \n2. JWT FILTER (src/main/java/config/JwtAuthenticationFilter.java):\n   - Checks for Authorization header\n   - No header → skips authentication\n   - Continues to next filter\n   \n3. SECURITY CONFIG (src/main/java/config/SecurityConfig.java):\n   - Checks if endpoint is in permitAll()\n   - /api/v1/auth/login IS in permitAll()\n   - Allows request\n   - Returns 200 OK with JWT tokens\n   \n4. CLIENT CALLS PROTECTED ENDPOINT:\n   GET /api/v1/user/profile\n   Authorization: Bearer <token_from_login>\n   \n5. JWT FILTER:\n   - Finds Authorization header\n   - Validates JWT token\n   - Sets authentication in SecurityContext\n   \n6. SECURITY CONFIG:\n   - Endpoint requires hasAnyRole(\"USER\", \"ADMIN\")\n   - Authentication is valid\n   - Allows request\n   - Returns 200 OK\n\nIF YOU GET 401 AT STEP 3:\n   → Endpoint not in permitAll()\n   → ADD to SecurityConfig line ~119-125\n\nIF YOU GET 401 AT STEP 6:\n   → Token is invalid/expired\n   → Need to login again and get new token"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
+
