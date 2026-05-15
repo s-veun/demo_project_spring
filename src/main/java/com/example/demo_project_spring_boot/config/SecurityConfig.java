@@ -119,6 +119,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
+                                "/api/v1/auth/refresh",
                                 "/api/v1/auth/refresh-token",
                                 "/api/v1/admin/register",
                                 "/api/v1/admin/login"
@@ -163,6 +164,7 @@ public class SecurityConfig {
                                 "/api/v1/user/**",
                                 "/api/v1/profile/**"
                         ).hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").hasAnyRole("USER", "ADMIN")
 
                         // Any other request requires authentication

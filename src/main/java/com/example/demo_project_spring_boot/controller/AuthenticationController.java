@@ -143,7 +143,7 @@ public class AuthenticationController {
      * Refresh access token using refresh token
      * POST /api/v1/auth/refresh-token
      */
-    @PostMapping("/refresh-token")
+    @PostMapping({"/refresh-token", "/refresh"})
     @Operation(summary = "Refresh access token", description = "Generate new access token using refresh token")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Token refreshed successfully",
