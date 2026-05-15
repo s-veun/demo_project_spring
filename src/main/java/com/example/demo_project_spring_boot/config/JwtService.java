@@ -9,7 +9,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -168,7 +172,40 @@ public class JwtService {
      * Get signing key from secret
      */
     private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+        if (jwtSecret == null || jwtSecret.trim().isEmpty()) {
+            throw new IllegalStateException("JWT secret is not configured");
+        }
+
+        byte[] keyBytes = decodeSecretBytes(jwtSecret.trim());
+
+        // Ensure minimum key size for HS256.
+        if (keyBytes.length < 32) {
+            keyBytes = sha256(jwtSecret.trim());
+        }
+
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private byte[] decodeSecretBytes(String secret) {
+        try {
+            return Decoders.BASE64.decode(secret);
+        } catch (IllegalArgumentException ignored) {
+            // Fall through to URL-safe base64 decoding.
+        }
+
+        try {
+            return Base64.getUrlDecoder().decode(secret);
+        } catch (IllegalArgumentException ignored) {
+            // Fall back to raw secret bytes for environments using plain text secrets.
+            return secret.getBytes(StandardCharsets.UTF_8);
+        }
+    }
+
+    private byte[] sha256(String value) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
     }
 }

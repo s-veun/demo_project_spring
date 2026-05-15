@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -79,16 +78,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         log.info("Attempting login for user: {}", request.getUsername());
 
         try {
+            String loginId = request.getUsername() == null ? "" : request.getUsername().trim();
+
             // Authenticate user
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            request.getUsername(),
-                            request.getPassword()
-                    )
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginId, request.getPassword())
             );
 
             // Find user in database
-            Optional<User> userOpt = userRepository.findByUsername(request.getUsername());
+            Optional<User> userOpt = userRepository.findByUsername(loginId)
+                    .or(() -> userRepository.findByEmail(loginId));
             if (userOpt.isEmpty()) {
                 throw new IllegalArgumentException("User not found");
             }
@@ -136,9 +135,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         } catch (BadCredentialsException e) {
             log.warn("Invalid credentials for user: {}", request.getUsername());
             throw new BadCredentialsException("Invalid username or password");
+        } catch (IllegalArgumentException e) {
+            log.warn("Login rejected for user {}: {}", request.getUsername(), e.getMessage());
+            throw e;
         } catch (Exception e) {
             log.error("Error during login", e);
-            throw new RuntimeException("Login failed: " + e.getMessage());
+            throw new RuntimeException("Login failed due to server error", e);
         }
     }
 

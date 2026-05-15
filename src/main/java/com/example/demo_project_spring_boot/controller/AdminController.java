@@ -129,7 +129,7 @@ public class AdminController {
                     .body(Map.of("error", "Invalid username or password"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", e.getMessage()));
+                    .body(Map.of("error", "Login failed"));
         }
     }
 
