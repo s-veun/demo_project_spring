@@ -123,6 +123,17 @@ public class AuthenticationController {
                     .body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
             log.error("Unexpected error during login", e);
+            Throwable root = e;
+            while (root.getCause() != null) {
+                root = root.getCause();
+            }
+            if (root instanceof IllegalStateException) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of(
+                                "success", false,
+                                "message", "JWT configuration error. Verify JWT_SECRET and JWT_SECRET_FORMAT"
+                        ));
+            }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("success", false, "message", "Login failed"));
         }

@@ -16,6 +16,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -28,6 +29,16 @@ public class JwtService {
 
     @Value("${app.jwt.secret}")
     private String jwtSecret;
+
+    /**
+     * Supported values: plain, base64, base64url, auto
+     * - plain: raw UTF-8 secret bytes
+     * - base64: RFC4648 Base64 secret bytes
+     * - base64url: URL-safe Base64 secret bytes
+     * - auto: detect format using safe heuristics
+     */
+    @Value("${app.jwt.secret-format:auto}")
+    private String secretFormat;
 
     @Value("${app.jwt.access-token-expiration:86400000}") // 24 hours
     private long accessTokenExpiration;
@@ -196,29 +207,90 @@ public class JwtService {
             throw new IllegalStateException("JWT secret is not configured");
         }
 
-        byte[] keyBytes = decodeSecretBytes(jwtSecret.trim());
+        final String normalizedSecret = jwtSecret.trim();
+        byte[] keyBytes = decodeSecretBytes(normalizedSecret, secretFormat);
 
         // Ensure minimum key size for HS256.
         if (keyBytes.length < 32) {
-            keyBytes = sha256(jwtSecret.trim());
+            keyBytes = sha256(normalizedSecret);
         }
 
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    private byte[] decodeSecretBytes(String secret) {
-        try {
-            return Decoders.BASE64.decode(secret);
-        } catch (IllegalArgumentException ignored) {
-            // Fall through to URL-safe base64 decoding.
+    private byte[] decodeSecretBytes(String secret, String format) {
+        String normalizedFormat = format == null ? "auto" : format.trim().toLowerCase(Locale.ROOT);
+
+        return switch (normalizedFormat) {
+            case "plain" -> secret.getBytes(StandardCharsets.UTF_8);
+            case "base64" -> decodeBase64Strict(secret);
+            case "base64url" -> decodeBase64UrlStrict(secret);
+            case "auto" -> decodeAuto(secret);
+            default -> throw new IllegalStateException(
+                    "Unsupported app.jwt.secret-format='" + format + "'. Use plain|base64|base64url|auto");
+        };
+    }
+
+    private byte[] decodeAuto(String secret) {
+        // Explicit prefixes remove ambiguity in environments like Railway.
+        if (secret.startsWith("base64:")) {
+            return decodeBase64Strict(secret.substring("base64:".length()));
+        }
+        if (secret.startsWith("base64url:")) {
+            return decodeBase64UrlStrict(secret.substring("base64url:".length()));
         }
 
+        // Try strict Base64 only when the input looks like padded Base64.
+        if (looksLikeStandardBase64(secret)) {
+            try {
+                return decodeBase64Strict(secret);
+            } catch (IllegalStateException ignored) {
+                // Fall through to plain text.
+            }
+        }
+
+        // Try URL-safe Base64 only when it clearly looks URL-safe.
+        if (looksLikeBase64Url(secret)) {
+            try {
+                return decodeBase64UrlStrict(secret);
+            } catch (IllegalStateException ignored) {
+                // Fall through to plain text.
+            }
+        }
+
+        // Default to raw UTF-8 bytes for plain text secrets.
+        return secret.getBytes(StandardCharsets.UTF_8);
+    }
+
+    private byte[] decodeBase64Strict(String secret) {
+        try {
+            return Decoders.BASE64.decode(secret);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException(
+                    "JWT secret is not valid standard Base64. If your secret is plain text, set app.jwt.secret-format=plain.",
+                    ex
+            );
+        }
+    }
+
+    private byte[] decodeBase64UrlStrict(String secret) {
         try {
             return Base64.getUrlDecoder().decode(secret);
-        } catch (IllegalArgumentException ignored) {
-            // Fall back to raw secret bytes for environments using plain text secrets.
-            return secret.getBytes(StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException(
+                    "JWT secret is not valid Base64URL. If your secret is plain text, set app.jwt.secret-format=plain.",
+                    ex
+            );
         }
+    }
+
+    private boolean looksLikeStandardBase64(String value) {
+        return value.length() % 4 == 0 && value.matches("^[A-Za-z0-9+/]*={0,2}$");
+    }
+
+    private boolean looksLikeBase64Url(String value) {
+        // URL-safe Base64 typically has '-' and '_' and may omit '=' padding.
+        return value.matches("^[A-Za-z0-9_-]+={0,2}$");
     }
 
     private byte[] sha256(String value) {

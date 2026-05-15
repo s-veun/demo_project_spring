@@ -113,7 +113,12 @@ spring:
 # ===========================================================
 app:
   jwt:
-    secret: ${JWT_SECRET:YW5vdGhlcmh1bWFuYXV0b1NhdmV1bjIwMzJ0aGVibHVlY29hdGhhcHB5aGlzc2VlbWVuZGluZ3F1aWNrc2lsdmVyc3RlZWxub3dj}
+    # Railway tip:
+    # - For plain text secret: set JWT_SECRET_FORMAT=plain
+    # - For openssl base64 secret: set JWT_SECRET_FORMAT=base64
+    # - For auto-detection: set JWT_SECRET_FORMAT=auto
+    secret: ${JWT_SECRET:change-this-jwt-secret-in-production-minimum-32-bytes}
+    secret-format: ${JWT_SECRET_FORMAT:plain}
     access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:86400000}
     refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
 
