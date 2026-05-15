@@ -4,6 +4,7 @@ import com.example.demo_project_spring_boot.config.JwtService;
 import com.example.demo_project_spring_boot.dto.*;
 import com.example.demo_project_spring_boot.Enum.OrderStatus;
 import com.example.demo_project_spring_boot.Enum.Role;
+import com.example.demo_project_spring_boot.exception.DuplicateResourceException;
 import com.example.demo_project_spring_boot.model.Order;
 import com.example.demo_project_spring_boot.model.Product;
 import com.example.demo_project_spring_boot.model.ProductImage;
@@ -68,20 +69,40 @@ public class AdminController {
     @Operation(summary = "Register new ADMIN account")
     public ResponseEntity<?> registerAdmin(@RequestBody RegisterRequest request) {
         try {
+            // Validate input
+            if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("success", false, "message", "Username is required"));
+            }
+            if (request.getPassword() == null || request.getPassword().length() < 6) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("success", false, "message", "Password must be at least 6 characters"));
+            }
+            if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("success", false, "message", "Email is required"));
+            }
+
             User user = new User();
-            user.setUsername(request.getUsername());
+            user.setUsername(request.getUsername().trim());
             user.setPassword(request.getPassword());
-            user.setEmail(request.getEmail());
-            user.setFirstName(request.getFirstName());
-            user.setLastName(request.getLastName());
-            user.setPhoneNumber(request.getPhoneNumber());
+            user.setEmail(request.getEmail().trim());
+            user.setFirstName(request.getFirstName() != null ? request.getFirstName() : "");
+            user.setLastName(request.getLastName() != null ? request.getLastName() : "");
+            user.setPhoneNumber(request.getPhoneNumber() != null ? request.getPhoneNumber() : "");
+            user.setProvider("LOCAL");
+            user.setIsOAuth2Linked(false);
 
             User registeredAdmin = userService.registerAdmin(user);
-            registeredAdmin.setPassword(null);
+            registeredAdmin.setPassword(null); // Don't expose password in response
+
             return new ResponseEntity<>(registeredAdmin, HttpStatus.CREATED);
+        } catch (DuplicateResourceException e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", e.getMessage()));
+                    .body(Map.of("success", false, "message", "Registration failed: " + e.getMessage()));
         }
     }
 
@@ -90,7 +111,16 @@ public class AdminController {
     @Operation(summary = "Admin login — returns JWT token")
     public ResponseEntity<?> loginAdmin(@RequestBody LoginRequest request) {
         try {
-            String loginId = request.getUsername() == null ? "" : request.getUsername().trim();
+            if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Username is required"));
+            }
+            if (request.getPassword() == null || request.getPassword().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Password is required"));
+            }
+
+            String loginId = request.getUsername().trim();
 
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginId, request.getPassword())
@@ -108,11 +138,13 @@ public class AdminController {
 
             String token = jwtService.generateAccessToken(userDetails);
 
-            // Update last login time
-            userRepository.findByUsername(request.getUsername()).ifPresent(admin -> {
-                admin.setLastLoginAt(java.time.LocalDateTime.now());
-                userRepository.save(admin);
-            });
+            // Update last login time using username or email
+            userRepository.findByUsername(loginId)
+                    .or(() -> userRepository.findByEmail(loginId))
+                    .ifPresent(admin -> {
+                        admin.setLastLoginAt(java.time.LocalDateTime.now());
+                        userRepository.save(admin);
+                    });
 
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);
