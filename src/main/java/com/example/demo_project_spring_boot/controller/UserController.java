@@ -76,7 +76,7 @@ public class UserController {
             );
 
             UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
-            String jwtToken = jwtService.generateToken(userDetails);
+            String jwtToken = jwtService.generateAccessToken(userDetails);
 
             Map<String, Object> response = new HashMap<>();
             response.put("token", jwtToken);

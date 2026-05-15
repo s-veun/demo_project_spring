@@ -43,4 +43,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     // Count enabled/disabled users
     long countByIsEnabled(Boolean isEnabled);
+
+    // OAuth2 Methods
+    Optional<User> findByEmail(String email);
+
+    Optional<User> findByProviderAndProviderId(String provider, String providerId);
+
+    boolean existsByEmail(String email);
 }

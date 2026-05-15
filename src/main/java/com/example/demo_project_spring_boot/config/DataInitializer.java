@@ -6,10 +6,12 @@ import com.example.demo_project_spring_boot.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
+@Order(100)
 @RequiredArgsConstructor
 @Slf4j
 public class DataInitializer implements CommandLineRunner {
@@ -23,6 +25,7 @@ public class DataInitializer implements CommandLineRunner {
         if (!userRepository.findByUsername("Savoeun").isPresent()) {
             User admin = User.builder()
                     .username("Savoeun")
+                    .email("savoeun.admin@local.app")
                     .password(passwordEncoder.encode("Saveun2032"))
                     .role(Role.ADMIN)
                     .isEnabled(true)
@@ -35,6 +38,7 @@ public class DataInitializer implements CommandLineRunner {
         if (!userRepository.findByUsername("user").isPresent()) {
             User user = User.builder()
                     .username("user")
+                    .email("user@local.app")
                     .password(passwordEncoder.encode("user123"))
                     .role(Role.USER)
                     .isEnabled(true)

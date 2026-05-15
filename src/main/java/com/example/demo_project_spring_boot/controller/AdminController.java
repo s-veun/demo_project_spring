@@ -108,7 +108,7 @@ public class AdminController {
                         .body(Map.of("error", "Access denied. Admin only!"));
             }
 
-            String token = jwtService.generateToken(userDetails);
+            String token = jwtService.generateAccessToken(userDetails);
 
             // Update last login time
             userRepository.findByUsername(request.getUsername()).ifPresent(admin -> {

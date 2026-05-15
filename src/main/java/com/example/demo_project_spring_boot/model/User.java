@@ -26,11 +26,11 @@ public class User {
     @Column(unique = true, nullable = false)
     private String username;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
-    @Column(unique = true)
+    @Column(unique = true, nullable = false)
     private String email;
 
     private String phoneNumber;
@@ -44,6 +44,18 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    // ============= OAuth2 Fields =============
+    @Column(name = "oauth_provider")
+    private String provider; // LOCAL, GOOGLE, GITHUB, FACEBOOK, etc.
+
+    @Column(name = "oauth_provider_id")
+    private String providerId; // Google user ID or other OAuth provider ID
+
+    @Builder.Default
+    @Column(name = "oauth_account_linked", nullable = false)
+    private Boolean isOAuth2Linked = false;
+
+    // ============= Relationships =============
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     @JsonIgnore
     private List<Address> addresses;
@@ -81,6 +93,7 @@ public class User {
     @PrePersist
     protected void onCreate() {
         if (this.isEnabled == null) this.isEnabled = true;
+        if (this.isOAuth2Linked == null) this.isOAuth2Linked = false;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
