@@ -25,6 +25,8 @@ public interface AuthenticationService {
      */
     void logoutUser(String username);
 
+    void revokeSession(String accessToken, String refreshToken);
+
     /**
      * Validate JWT token
      */

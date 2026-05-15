@@ -2,6 +2,7 @@ package com.example.demo_project_spring_boot.service.impl;
 
 import com.example.demo_project_spring_boot.config.JwtService;
 import com.example.demo_project_spring_boot.dto.*;
+import com.example.demo_project_spring_boot.Enum.AuthProvider;
 import com.example.demo_project_spring_boot.model.User;
 import com.example.demo_project_spring_boot.repository.UserRepository;
 import com.example.demo_project_spring_boot.service.AuthenticationService;
@@ -13,6 +14,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -24,6 +26,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class AuthenticationServiceImpl implements AuthenticationService {
 
     private final UserRepository userRepository;
@@ -54,7 +57,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
-                .provider("LOCAL")
+                .provider(AuthProvider.LOCAL)
                 .isOAuth2Linked(false)
                 .role(Role.USER)
                 .isEnabled(true)
@@ -113,6 +116,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             );
 
             String refreshToken = jwtService.generateRefreshToken(user.getUsername(), user.getId());
+            user.setAccessToken(accessToken);
+            user.setRefreshToken(refreshToken);
+            userRepository.save(user);
 
             log.info("User login successful: {}", user.getId());
 
@@ -150,6 +156,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         try {
             String token = request.getRefreshToken();
+            if (!jwtService.isRefreshToken(token)) {
+                throw new IllegalArgumentException("Invalid token type");
+            }
 
             if (jwtService.isTokenExpired(token)) {
                 log.warn("Refresh token is expired");
@@ -165,6 +174,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             }
 
             User user = userOpt.get();
+            if (user.getRefreshToken() == null || !user.getRefreshToken().equals(token)) {
+                throw new IllegalArgumentException("Refresh token is revoked or does not match active session");
+            }
 
             // Generate new access token
             String newAccessToken = jwtService.generateAccessToken(
@@ -173,6 +185,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     user.getEmail(),
                     user.getRole().name()
             );
+            user.setAccessToken(newAccessToken);
+            userRepository.save(user);
 
             log.info("Token refreshed successfully for user: {}", userId);
 
@@ -193,9 +207,30 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public void logoutUser(String username) {
         log.info("User logged out: {}", username);
-        // In stateless JWT authentication, logout is typically handled by frontend
-        // by removing the token from storage (localStorage, sessionStorage, etc.)
-        // You can optionally implement token blacklisting if needed
+        userRepository.findByUsername(username).ifPresent(user -> {
+            user.setAccessToken(null);
+            user.setRefreshToken(null);
+            userRepository.save(user);
+        });
+    }
+
+    @Override
+    public void revokeSession(String accessToken, String refreshToken) {
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            userRepository.findByRefreshToken(refreshToken).ifPresent(user -> {
+                user.setRefreshToken(null);
+                user.setAccessToken(null);
+                userRepository.save(user);
+            });
+            return;
+        }
+        if (accessToken != null && !accessToken.isBlank()) {
+            userRepository.findByAccessToken(accessToken).ifPresent(user -> {
+                user.setAccessToken(null);
+                user.setRefreshToken(null);
+                userRepository.save(user);
+            });
+        }
     }
 
     @Override

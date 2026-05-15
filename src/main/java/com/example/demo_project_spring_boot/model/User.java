@@ -1,6 +1,7 @@
 package com.example.demo_project_spring_boot.model;
 
 import com.example.demo_project_spring_boot.Enum.Role;
+import com.example.demo_project_spring_boot.Enum.AuthProvider;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
@@ -34,9 +35,10 @@ public class User {
     private String email;
 
     private String phoneNumber;
-    
+
+    @Column(name = "profile_image")
     private String profileImageUrl;
-    
+
     private String firstName;
     
     private String lastName;
@@ -45,8 +47,9 @@ public class User {
     private Role role;
 
     // ============= OAuth2 Fields =============
-    @Column(name = "oauth_provider")
-    private String provider; // LOCAL, GOOGLE, GITHUB, FACEBOOK, etc.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "oauth_provider", nullable = false)
+    private AuthProvider provider;
 
     @Column(name = "oauth_provider_id")
     private String providerId; // Google user ID or other OAuth provider ID
@@ -54,6 +57,12 @@ public class User {
     @Builder.Default
     @Column(name = "oauth_account_linked", nullable = false)
     private Boolean isOAuth2Linked = false;
+
+    @Column(name = "access_token", length = 2048)
+    private String accessToken;
+
+    @Column(name = "refresh_token", length = 2048)
+    private String refreshToken;
 
     // ============= Relationships =============
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
@@ -94,6 +103,7 @@ public class User {
     protected void onCreate() {
         if (this.isEnabled == null) this.isEnabled = true;
         if (this.isOAuth2Linked == null) this.isOAuth2Linked = false;
+        if (this.provider == null) this.provider = AuthProvider.LOCAL;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }

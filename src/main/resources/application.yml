@@ -67,6 +67,14 @@ spring:
               - email
             redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/login/oauth2/code/google}
             client-name: Google
+          facebook:
+            client-id: ${FACEBOOK_APP_ID:replace_with_your_facebook_app_id}
+            client-secret: ${FACEBOOK_APP_SECRET:replace_with_your_facebook_app_secret}
+            scope:
+              - public_profile
+              - email
+            redirect-uri: ${FACEBOOK_REDIRECT_URI:http://localhost:8080/login/oauth2/code/facebook}
+            client-name: Facebook
 
         provider:
           google:
@@ -74,6 +82,11 @@ spring:
             token-uri: https://www.googleapis.com/oauth2/v4/token
             user-info-uri: https://www.googleapis.com/oauth2/v1/userinfo
             user-name-attribute: sub
+          facebook:
+            authorization-uri: https://www.facebook.com/v18.0/dialog/oauth
+            token-uri: https://graph.facebook.com/v18.0/oauth/access_token
+            user-info-uri: https://graph.facebook.com/me?fields=id,name,email,picture{url},first_name,last_name
+            user-name-attribute: id
 
   # ===========================================================
   # FILE UPLOAD CONFIGURATION
@@ -109,6 +122,9 @@ app:
 
   api:
     url: ${APP_API_URL:http://localhost:8080}
+
+  oauth2:
+    authorized-redirect-uri: ${OAUTH2_AUTHORIZED_REDIRECT_URI:http://localhost:3000/auth/callback}
 
 # ===========================================================
 # CLOUDINARY CONFIGURATION

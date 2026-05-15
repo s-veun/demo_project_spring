@@ -20,9 +20,15 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .or(() -> userRepository.findByEmail(loginId))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + loginId));
 
+        if (user.getRole() == null) {
+            // Treat broken user records as authentication failures instead of bubbling as 500 errors.
+            throw new UsernameNotFoundException("User role is not configured: " + loginId);
+        }
+
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getUsername())
                 .password(user.getPassword())
+                .disabled(!Boolean.TRUE.equals(user.getIsEnabled()))
                 .roles(user.getRole().name())
                 .build();
     }

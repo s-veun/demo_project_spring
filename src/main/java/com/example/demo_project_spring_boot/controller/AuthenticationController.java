@@ -2,6 +2,7 @@ package com.example.demo_project_spring_boot.controller;
 
 import com.example.demo_project_spring_boot.dto.*;
 import com.example.demo_project_spring_boot.service.AuthenticationService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -13,9 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -27,7 +29,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Authentication", description = "User Authentication APIs")
+@Tag(name = "Social Authentication APIs", description = "Continue with Google, Continue with Facebook, refresh token, secure logout, and profile flow integration")
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
@@ -37,6 +39,7 @@ public class AuthenticationController {
      * POST /api/v1/auth/register
      */
     @PostMapping("/register")
+    @Hidden
     @Operation(summary = "Register new user", description = "Create a new user account with email and password")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "User registered successfully",
@@ -83,6 +86,7 @@ public class AuthenticationController {
      * POST /api/v1/auth/login
      */
     @PostMapping("/login")
+    @Hidden
     @Operation(summary = "Login user", description = "Authenticate user with email/username and password, returns JWT tokens")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Login successful",
@@ -146,12 +150,16 @@ public class AuthenticationController {
             }
 
             RefreshTokenResponse response = authenticationService.refreshToken(request);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResult.<RefreshTokenResponse>builder()
+                    .success(true)
+                    .message("Refresh access token successful")
+                    .data(response)
+                    .build());
 
         } catch (Exception e) {
             log.warn("Token refresh failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+                    .body(ApiResult.builder().success(false).message(e.getMessage()).build());
         }
     }
 
@@ -166,23 +174,28 @@ public class AuthenticationController {
             @ApiResponse(responseCode = "200", description = "Logout successful"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<?> logoutUser(@RequestParam(required = false) String username) {
+    public ResponseEntity<?> logoutUser(
+            @RequestBody(required = false) LogoutRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            Authentication authentication
+    ) {
         try {
-            if (username != null && !username.isEmpty()) {
-                authenticationService.logoutUser(username);
+            String accessToken = extractBearerToken(authorizationHeader);
+            String refreshToken = request != null ? request.getRefreshToken() : null;
+            authenticationService.revokeSession(accessToken, refreshToken);
+
+            if (authentication != null && authentication.isAuthenticated()) {
+                authenticationService.logoutUser(authentication.getName());
             }
 
-            log.info("User logged out: {}", username);
+            log.info("User logout completed");
 
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Logout successful"
-            ));
+            return ResponseEntity.ok(ApiResult.builder().success(true).message("Logout successful").build());
 
         } catch (Exception e) {
             log.error("Error during logout", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "message", "Logout failed"));
+                    .body(ApiResult.builder().success(false).message("Logout failed").build());
         }
     }
 
@@ -192,13 +205,30 @@ public class AuthenticationController {
      * Frontend should redirect to /oauth2/authorization/google
      */
     @GetMapping("/oauth2/google")
-    @Operation(summary = "Google OAuth2 Login Info", description = "Information about Google OAuth2 login flow")
+    @Operation(summary = "Continue with Google", description = "Returns authorization URL for Google OAuth2 login")
     public ResponseEntity<?> getGoogleLoginInfo() {
-        Map<String, String> info = new HashMap<>();
-        info.put("message", "Use /oauth2/authorization/google to start Google OAuth2 login");
-        info.put("authorizationUri", "/oauth2/authorization/google");
-        info.put("description", "Redirect users to /oauth2/authorization/google to start Google login flow");
-        return ResponseEntity.ok(info);
+        return ResponseEntity.ok(ApiResult.builder()
+                .success(true)
+                .message("Continue with Google")
+                .data(Map.of("authorizationUri", "/oauth2/authorization/google"))
+                .build());
+    }
+
+    @GetMapping("/oauth2/facebook")
+    @Operation(summary = "Continue with Facebook", description = "Returns authorization URL for Facebook OAuth2 login")
+    public ResponseEntity<?> getFacebookLoginInfo() {
+        return ResponseEntity.ok(ApiResult.builder()
+                .success(true)
+                .message("Continue with Facebook")
+                .data(Map.of("authorizationUri", "/oauth2/authorization/facebook"))
+                .build());
+    }
+
+    private String extractBearerToken(String authHeader) {
+        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        return authHeader.substring(7).trim();
     }
 }
 

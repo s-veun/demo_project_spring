@@ -1,0 +1,18 @@
+package com.example.demo_project_spring_boot.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class ApiResult<T> {
+    private boolean success;
+    private String message;
+    private T data;
+}
+
+

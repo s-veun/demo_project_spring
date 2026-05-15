@@ -49,6 +49,10 @@ public class JwtService {
         return extractClaim(token, claims -> claims.get("email", String.class));
     }
 
+    public String extractTokenType(String token) {
+        return extractClaim(token, claims -> claims.get("type", String.class));
+    }
+
     /**
      * Extract user ID from JWT token
      */
@@ -96,6 +100,22 @@ public class JwtService {
         extraClaims.put("userId", userId);
         extraClaims.put("type", "REFRESH");
         return generateToken(extraClaims, username, refreshTokenExpiration);
+    }
+
+    public boolean isAccessToken(String token) {
+        return "ACCESS".equalsIgnoreCase(extractTokenType(token));
+    }
+
+    public boolean isRefreshToken(String token) {
+        return "REFRESH".equalsIgnoreCase(extractTokenType(token));
+    }
+
+    public long getAccessTokenExpirationSeconds() {
+        return accessTokenExpiration / 1000;
+    }
+
+    public long getRefreshTokenExpirationSeconds() {
+        return refreshTokenExpiration / 1000;
     }
 
     /**

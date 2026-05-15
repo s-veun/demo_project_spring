@@ -1,6 +1,7 @@
 package com.example.demo_project_spring_boot.repository;
 
 import com.example.demo_project_spring_boot.Enum.Role;
+import com.example.demo_project_spring_boot.Enum.AuthProvider;
 import com.example.demo_project_spring_boot.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -47,7 +48,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // OAuth2 Methods
     Optional<User> findByEmail(String email);
 
-    Optional<User> findByProviderAndProviderId(String provider, String providerId);
+    Optional<User> findByProviderAndProviderId(AuthProvider provider, String providerId);
+
+    Optional<User> findByRefreshToken(String refreshToken);
+
+    Optional<User> findByAccessToken(String accessToken);
 
     boolean existsByEmail(String email);
 }

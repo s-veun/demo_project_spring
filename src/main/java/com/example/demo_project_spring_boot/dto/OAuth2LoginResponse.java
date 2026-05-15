@@ -18,6 +18,8 @@ public class OAuth2LoginResponse {
     private String message;
     private String accessToken;
     private String refreshToken;
+    private String tokenType;
+    private Long expiresIn;
     private Long userId;
     private String username;
     private String email;

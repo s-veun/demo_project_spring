@@ -1,6 +1,7 @@
 package com.example.demo_project_spring_boot.controller;
 
 import com.example.demo_project_spring_boot.config.JwtService;
+import com.example.demo_project_spring_boot.Enum.AuthProvider;
 import com.example.demo_project_spring_boot.dto.*;
 import com.example.demo_project_spring_boot.Enum.OrderStatus;
 import com.example.demo_project_spring_boot.Enum.Role;
@@ -23,6 +24,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,11 +33,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -51,6 +57,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
 @Tag(name = "Admin", description = "Admin management APIs")
+@Slf4j
 public class AdminController {
 
     private final UserService userService;
@@ -90,7 +97,7 @@ public class AdminController {
             user.setFirstName(request.getFirstName() != null ? request.getFirstName() : "");
             user.setLastName(request.getLastName() != null ? request.getLastName() : "");
             user.setPhoneNumber(request.getPhoneNumber() != null ? request.getPhoneNumber() : "");
-            user.setProvider("LOCAL");
+            user.setProvider(AuthProvider.LOCAL);
             user.setIsOAuth2Linked(false);
 
             User registeredAdmin = userService.registerAdmin(user);
@@ -154,13 +161,24 @@ public class AdminController {
 
             return ResponseEntity.ok(response);
 
-        } catch (BadCredentialsException e) {
-             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                     .body(Map.of("error", "Invalid username or password"));
-         } catch (Exception e) {
-             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                     .body(Map.of("error", "Login failed"));
-         }
+        } catch (BadCredentialsException | UsernameNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid username or password"));
+        } catch (DisabledException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Account is disabled"));
+        } catch (AuthenticationServiceException e) {
+            log.error("Authentication service failure for admin loginId={}", request.getUsername(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Authentication service unavailable"));
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Authentication failed"));
+        } catch (Exception e) {
+            log.error("Unexpected admin login failure for loginId={}", request.getUsername(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Login failed"));
+        }
     }
 
     // ៣. Get All Users — ADMIN only

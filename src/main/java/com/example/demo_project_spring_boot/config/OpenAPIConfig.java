@@ -61,17 +61,19 @@ public class OpenAPIConfig {
                                 ## 🚀 Complete E-Commerce REST API
                                 
                                 **សមត្ថភាពសំខាន់ៗ:**
-                                - User Authentication & Authorization (JWT)
+                                - Social Authentication APIs (Google/Facebook OAuth2)
+                                - JWT Access + Refresh Token Authentication
                                 - Product Management with Cloudinary
                                 - Shopping Cart & Orders
                                 - Reviews & Ratings
                                 - Wishlist & Popularity Tracking
                                 
                                 **របៀបប្រើប្រាស់ Authentication:**
-                                1. Login តាមរយៈ `POST /api/v1/login`
-                                2. ចម្លង (Copy) Token ចេញពី Response
-                                3. ចុចប៊ូតុង **Authorize** ខាងលើ
-                                4. វាយពាក្យ: `Bearer <your-token>`
+                                1. Start social login via `GET /api/v1/auth/oauth2/google` or `GET /api/v1/auth/oauth2/facebook`
+                                2. Complete OAuth2 consent screen
+                                3. Receive `accessToken` and `refreshToken`
+                                4. Use `POST /api/v1/auth/refresh-token` for token renewal
+                                5. Call protected APIs with `Bearer <access-token>`
                                 """)
                         .contact(new Contact()
                                 .name("API Support")

@@ -1,9 +1,12 @@
 package com.example.demo_project_spring_boot.config;
 
 import com.example.demo_project_spring_boot.security.CustomAuthenticationEntryPoint;
+import com.example.demo_project_spring_boot.security.CustomAccessDeniedHandler;
+import com.example.demo_project_spring_boot.security.CustomOAuth2UserService;
 import com.example.demo_project_spring_boot.security.OAuth2AuthenticationFailureHandler;
 import com.example.demo_project_spring_boot.security.OAuth2AuthenticationSuccessHandler;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,13 +21,13 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -49,10 +52,19 @@ public class SecurityConfig {
     private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @Autowired
+    private CustomAccessDeniedHandler customAccessDeniedHandler;
+
+    @Autowired
     private OAuth2AuthenticationSuccessHandler oauth2AuthenticationSuccessHandler;
 
     @Autowired
     private OAuth2AuthenticationFailureHandler oauth2AuthenticationFailureHandler;
+
+    @Autowired
+    private CustomOAuth2UserService customOAuth2UserService;
+
+    @Value("${app.cors.allowed-origins:http://localhost:3000}")
+    private String allowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -70,16 +82,17 @@ public class SecurityConfig {
 
                 // Custom authentication entry point for 401 errors
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(customAuthenticationEntryPoint))
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)
+                        .accessDeniedHandler(customAccessDeniedHandler))
 
                 // OAuth2 Login Configuration
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(auth -> auth
-                                .baseUri("/oauth2/authorize"))
+                                .baseUri("/oauth2/authorization"))
                         .redirectionEndpoint(redirect -> redirect
                                 .baseUri("/login/oauth2/code/*"))
                         .userInfoEndpoint(userInfo -> userInfo
-                                .oidcUserService(oidcUserService()))
+                                .userService(customOAuth2UserService))
                         .successHandler(oauth2AuthenticationSuccessHandler)
                         .failureHandler(oauth2AuthenticationFailureHandler))
 
@@ -111,6 +124,11 @@ public class SecurityConfig {
                                 "/api/v1/admin/login"
                         ).permitAll()
 
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/auth/oauth2/google",
+                                "/api/v1/auth/oauth2/facebook"
+                        ).permitAll()
+
                         // OAuth2 Authorization Endpoints
                         .requestMatchers(
                                 "/oauth2/**",
@@ -137,9 +155,9 @@ public class SecurityConfig {
                         // Authenticated User Routes
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/user/**",
-                                "/api/v1/profile/**",
-                                "/api/v1/auth/logout"
+                                "/api/v1/profile/**"
                         ).hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").hasAnyRole("USER", "ADMIN")
 
                         // Any other request requires authentication
                         .anyRequest().authenticated()
@@ -172,14 +190,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allow origins (should be configured via environment variables in production)
-        config.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:3001",
-                "http://localhost:8080",
-                "https://demoprojectspring-production.up.railway.app",
-                "https://*.vercel.app"
-        ));
+        config.setAllowedOriginPatterns(Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .toList());
 
         // Allow all methods
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
@@ -201,11 +215,4 @@ public class SecurityConfig {
         return source;
     }
 
-    /**
-     * OIDC User Service for OAuth2 Login
-     */
-    @Bean
-    public OidcUserService oidcUserService() {
-        return new OidcUserService();
-    }
 }
