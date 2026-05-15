@@ -90,15 +90,13 @@ public class AdminController {
     @Operation(summary = "Admin login — returns JWT token")
     public ResponseEntity<?> loginAdmin(@RequestBody LoginRequest request) {
         try {
+            String loginId = request.getUsername() == null ? "" : request.getUsername().trim();
+
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            request.getUsername(),
-                            request.getPassword()
-                    )
+                    new UsernamePasswordAuthenticationToken(loginId, request.getPassword())
             );
 
-            UserDetails userDetails = userDetailsService
-                    .loadUserByUsername(request.getUsername());
+            UserDetails userDetails = userDetailsService.loadUserByUsername(loginId);
 
             boolean isAdmin = userDetails.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
@@ -125,12 +123,12 @@ public class AdminController {
             return ResponseEntity.ok(response);
 
         } catch (BadCredentialsException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Invalid username or password"));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Login failed"));
-        }
+             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                     .body(Map.of("error", "Invalid username or password"));
+         } catch (Exception e) {
+             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                     .body(Map.of("error", "Login failed"));
+         }
     }
 
     // ៣. Get All Users — ADMIN only
