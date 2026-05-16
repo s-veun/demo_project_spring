@@ -25,6 +25,20 @@ public class SchemaMigrationRunner implements CommandLineRunner {
         jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider_id VARCHAR(255)");
         jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_account_linked BOOLEAN NOT NULL DEFAULT FALSE");
 
+        // OAuth2 users may not have password in legacy schemas.
+        try {
+            jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN password DROP NOT NULL");
+        } catch (Exception ex) {
+            log.warn("Skipping password nullability migration (already compatible or unsupported): {}", ex.getMessage());
+        }
+
+        // Backfill provider for existing rows to satisfy non-null enum mapping.
+        try {
+            jdbcTemplate.execute("UPDATE users SET oauth_provider = 'LOCAL' WHERE oauth_provider IS NULL");
+        } catch (Exception ex) {
+            log.warn("Skipping oauth_provider backfill: {}", ex.getMessage());
+        }
+
         // Backfill from legacy naming if this column already existed in older deployments.
         jdbcTemplate.execute("""
                 DO $$
@@ -42,6 +56,12 @@ public class SchemaMigrationRunner implements CommandLineRunner {
                     END IF;
                 END $$;
                 """);
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN oauth_provider SET DEFAULT 'LOCAL'");
+        } catch (Exception ex) {
+            log.warn("Skipping oauth_provider default migration: {}", ex.getMessage());
+        }
 
         log.info("OAuth2 schema migration check complete.");
     }
