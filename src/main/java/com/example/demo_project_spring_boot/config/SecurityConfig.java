@@ -122,7 +122,6 @@ public class SecurityConfig {
                 // Public Authentication Routes (password + social + refresh/logout orchestration)
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST,
-                        "/api/v1/admin/register",
                         "/api/v1/admin/login"
                 ).permitAll()
 

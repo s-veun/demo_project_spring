@@ -39,6 +39,13 @@ public class SchemaMigrationRunner implements CommandLineRunner {
             log.warn("Skipping oauth_provider backfill: {}", ex.getMessage());
         }
 
+        // Backfill missing role values to USER for safer RBAC defaults.
+        try {
+            jdbcTemplate.execute("UPDATE users SET role = 'USER' WHERE role IS NULL");
+        } catch (Exception ex) {
+            log.warn("Skipping role backfill: {}", ex.getMessage());
+        }
+
         // Backfill from legacy naming if this column already existed in older deployments.
         jdbcTemplate.execute("""
                 DO $$
@@ -61,6 +68,12 @@ public class SchemaMigrationRunner implements CommandLineRunner {
             jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN oauth_provider SET DEFAULT 'LOCAL'");
         } catch (Exception ex) {
             log.warn("Skipping oauth_provider default migration: {}", ex.getMessage());
+        }
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN role SET DEFAULT 'USER'");
+        } catch (Exception ex) {
+            log.warn("Skipping role default migration: {}", ex.getMessage());
         }
 
         log.info("OAuth2 schema migration check complete.");

@@ -75,6 +75,15 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         Optional<User> existingByProvider = userRepository.findByProviderAndProviderId(provider, providerId);
         Optional<User> existingByEmail = userRepository.findByEmail(email);
 
+        if (existingByProvider.isEmpty()
+                && existingByEmail.isPresent()
+                && existingByEmail.get().getRole() == Role.ADMIN) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error("forbidden_role_link"),
+                    "Automatic OAuth2 login for admin accounts is not allowed"
+            );
+        }
+
         User user = existingByProvider
                 .or(() -> existingByEmail)
                 .orElseGet(() -> User.builder()
@@ -87,6 +96,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setProvider(provider);
         user.setProviderId(providerId);
         user.setIsOAuth2Linked(true);
+        // Social logins are always least-privilege by default.
+        user.setRole(Role.USER);
         user.setFirstName(firstName);
         user.setLastName(lastName);
         user.setProfileImageUrl(profileImage);

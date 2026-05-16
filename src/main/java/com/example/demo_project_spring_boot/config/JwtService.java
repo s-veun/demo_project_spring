@@ -87,6 +87,9 @@ public class JwtService {
                 .map(auth -> auth.getAuthority())
                 .toList();
         extraClaims.put("roles", roles);
+        if (!roles.isEmpty()) {
+            extraClaims.put("role", roles.get(0));
+        }
         extraClaims.put("type", "ACCESS");
         return generateToken(extraClaims, userDetails.getUsername(), accessTokenExpiration);
     }
@@ -99,6 +102,7 @@ public class JwtService {
         extraClaims.put("userId", userId);
         extraClaims.put("email", email);
         extraClaims.put("roles", roles);
+        extraClaims.put("role", roles);
         extraClaims.put("type", "ACCESS");
         return generateToken(extraClaims, username, accessTokenExpiration);
     }
