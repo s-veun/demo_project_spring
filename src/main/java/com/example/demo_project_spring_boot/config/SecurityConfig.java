@@ -119,12 +119,9 @@ public class SecurityConfig {
                         "/webjars/**"
                 ).permitAll()
 
-                // Public Authentication Routes
+                // Public Authentication Routes (password + social + refresh/logout orchestration)
+                .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST,
-                        "/api/v1/auth/register",
-                        "/api/v1/auth/login",
-                        "/api/v1/auth/refresh",
-                        "/api/v1/auth/refresh-token",
                         "/api/v1/admin/register",
                         "/api/v1/admin/login"
                 ).permitAll()
@@ -135,15 +132,10 @@ public class SecurityConfig {
                         "/api/v1/login"
                 ).permitAll()
 
-                .requestMatchers(HttpMethod.GET,
-                        "/api/v1/auth/oauth2/google"
-                ).permitAll()
-
                 // OAuth2 Authorization Endpoints
                 .requestMatchers(
                         "/oauth2/**",
-                        "/login/oauth2/**",
-                        "/login"
+                        "/login/**"
                 ).permitAll()
 
                 // Public GET Routes (Products/Categories)

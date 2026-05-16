@@ -8,12 +8,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
-import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.stereotype.Component;
 
@@ -35,11 +33,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     @Autowired
     private JwtService jwtService;
 
-    @Value("${app.oauth2.authorized-redirect-uri:}")
-    private String authorizedRedirectUri;
-
-    @Value("${app.frontend-url:http://localhost:3000}")
-    private String frontendUrl;
+    @Autowired
+    private OAuth2RedirectUriResolver redirectUriResolver;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -77,12 +72,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             user.setRefreshToken(refreshToken);
             userRepository.save(user);
 
-            String frontendRedirectUri = request.getParameter("frontend_redirect_uri");
-            if (!StringUtils.hasText(frontendRedirectUri)) {
-                frontendRedirectUri = StringUtils.hasText(authorizedRedirectUri)
-                        ? authorizedRedirectUri
-                        : frontendUrl + "/auth/success";
-            }
+            String frontendRedirectUri = redirectUriResolver.resolve(request);
 
             String redirect = UriComponentsBuilder.fromUriString(frontendRedirectUri)
                     .queryParam("token", accessToken)

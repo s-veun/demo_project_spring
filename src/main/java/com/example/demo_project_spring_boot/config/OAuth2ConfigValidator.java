@@ -13,14 +13,14 @@ import org.springframework.util.StringUtils;
 @Slf4j
 public class OAuth2ConfigValidator {
 
-    @Value("${app.oauth2.google.client-id:}")
+    @Value("${spring.security.oauth2.client.registration.google.client-id:}")
     private String googleClientId;
 
-    @Value("${app.oauth2.google.client-secret:}")
+    @Value("${spring.security.oauth2.client.registration.google.client-secret:}")
     private String googleClientSecret;
 
-    @Value("${app.oauth2.authorized-redirect-uri:}")
-    private String googleRedirectUri;
+    @Value("${spring.security.oauth2.client.registration.google.redirect-uri:{baseUrl}/login/oauth2/code/{registrationId}}")
+    private String googleRedirectUriTemplate;
 
     @Value("${app.frontend-url:}")
     private String frontendRedirectUri;
@@ -32,7 +32,7 @@ public class OAuth2ConfigValidator {
     public void validate() {
         boolean hasGoogleId = StringUtils.hasText(googleClientId);
         boolean hasGoogleSecret = StringUtils.hasText(googleClientSecret);
-        boolean hasGoogleRedirect = StringUtils.hasText(googleRedirectUri);
+        boolean hasGoogleRedirect = StringUtils.hasText(googleRedirectUriTemplate);
 
         if (!hasGoogleId || !hasGoogleSecret || !hasGoogleRedirect) {
             log.warn("OAuth2 Google configuration is incomplete. Google login will fail with invalid_client.");
@@ -46,7 +46,8 @@ public class OAuth2ConfigValidator {
         }
 
         log.info("Google OAuth2 client is configured.");
-        log.info("Google redirect URI: {}", googleRedirectUri);
+        log.info("Google redirect URI template: {}", googleRedirectUriTemplate);
+        log.info("Make sure Google Console redirect URI EXACTLY matches: https://<your-backend-domain>/login/oauth2/code/google");
 
         if (StringUtils.hasText(frontendRedirectUri)) {
             log.info("Frontend base URL: {}", frontendRedirectUri);

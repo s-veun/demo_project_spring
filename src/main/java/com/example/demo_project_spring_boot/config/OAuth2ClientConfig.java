@@ -31,10 +31,10 @@ public class OAuth2ClientConfig {
     // -----------------------------------------------------------------------
     // Google credentials  (env: GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET)
     // -----------------------------------------------------------------------
-    @Value("${app.oauth2.google.client-id:}")
+    @Value("${spring.security.oauth2.client.registration.google.client-id:}")
     private String googleClientId;
 
-    @Value("${app.oauth2.google.client-secret:}")
+    @Value("${spring.security.oauth2.client.registration.google.client-secret:}")
     private String googleClientSecret;
 
     // -----------------------------------------------------------------------
