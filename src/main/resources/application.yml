@@ -1,184 +1,88 @@
-# ============================================================
-# Spring Boot 3 + Spring Security 6 OAuth2 Configuration
-# ============================================================
-
 spring:
   application:
     name: demo_project_spring_boot
 
-  # ===========================================================
+  # =========================================================
   # SERVER CONFIGURATION
-  # ===========================================================
+  # =========================================================
   server:
     port: ${PORT:8080}
     address: 0.0.0.0
 
-  web:
-    error:
-      include-message: always
-      include-exception: false
-      include-stacktrace: never
-    resources:
-      static-locations:
-        - file:uploads/
-        - classpath:/static/
-
-  # ===========================================================
-  # DATABASE CONFIGURATION (PostgreSQL)
-  # ===========================================================
+  # =========================================================
+  # DATABASE CONFIGURATION
+  # =========================================================
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:Saveun2032}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 5
-      minimum-idle: 2
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
 
+  # =========================================================
+  # JPA CONFIGURATION
+  # =========================================================
   jpa:
     hibernate:
       ddl-auto: update
+
     show-sql: true
+
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
     open-in-view: false
 
-  # ===========================================================
-  # SECURITY - JWT & OAuth2 CONFIGURATION
-  # ===========================================================
-  security:
-    user:
-      name: ${ADMIN_USERNAME:admin}
-      password: ${ADMIN_PASSWORD:admin123}
-
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID:replace_with_your_google_client_id}
-            client-secret: ${GOOGLE_CLIENT_SECRET:replace_with_your_google_client_secret}
-            scope:
-              - profile
-              - email
-            redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/login/oauth2/code/google}
-            client-name: Google
-          facebook:
-            client-id: ${FACEBOOK_APP_ID:replace_with_your_facebook_app_id}
-            client-secret: ${FACEBOOK_APP_SECRET:replace_with_your_facebook_app_secret}
-            scope:
-              - public_profile
-              - email
-            redirect-uri: ${FACEBOOK_REDIRECT_URI:http://localhost:8080/login/oauth2/code/facebook}
-            client-name: Facebook
-
-        provider:
-          google:
-            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
-            token-uri: https://www.googleapis.com/oauth2/v4/token
-            user-info-uri: https://www.googleapis.com/oauth2/v1/userinfo
-            user-name-attribute: sub
-          facebook:
-            authorization-uri: https://www.facebook.com/v18.0/dialog/oauth
-            token-uri: https://graph.facebook.com/v18.0/oauth/access_token
-            user-info-uri: https://graph.facebook.com/me?fields=id,name,email,picture{url},first_name,last_name
-            user-name-attribute: id
-
-  # ===========================================================
-  # FILE UPLOAD CONFIGURATION
-  # ===========================================================
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 50MB
 
-  mvc:
-    static-path-pattern: /uploads/**
-
-  # ===========================================================
-  # JACKSON CONFIGURATION (JSON serialization)
-  # ===========================================================
-  jackson:
-    mapper:
-      accept-case-insensitive-enums: true
-    serialization:
-      fail-on-empty-beans: false
-
 # ===========================================================
 # APPLICATION CONFIGURATION
 # ===========================================================
 app:
+
+  # =========================================================
+  # JWT CONFIGURATION
+  # =========================================================
   jwt:
-    # Railway tip:
-    # - For plain text secret: set JWT_SECRET_FORMAT=plain
-    # - For openssl base64 secret: set JWT_SECRET_FORMAT=base64
-    # - For auto-detection: set JWT_SECRET_FORMAT=auto
-    secret: ${JWT_SECRET:change-this-jwt-secret-in-production-minimum-32-bytes}
-    secret-format: ${JWT_SECRET_FORMAT:plain}
-    access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:86400000}
-    refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
+    secret: ${JWT_SECRET}
 
+    access-token-expiration: 86400000
+
+    refresh-token-expiration: 604800000
+
+  # =========================================================
+  # FRONTEND URL
+  # =========================================================
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
+  # =========================================================
+  # CORS CONFIGURATION
+  # =========================================================
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
-
-  api:
-    url: ${APP_API_URL:http://localhost:8080}
-
-  oauth2:
-    authorized-redirect-uri: ${OAUTH2_AUTHORIZED_REDIRECT_URI:http://localhost:3000/auth/callback}
+    allowed-origins:
+      ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
 # ===========================================================
-# CLOUDINARY CONFIGURATION
-# ===========================================================
-cloudinary:
-  cloudName: ${CLOUDINARY_CLOUD_NAME:denxb3y4a}
-  apiKey: ${CLOUDINARY_API_KEY:836246288911529}
-  apiSecret: ${CLOUDINARY_API_SECRET:Ln8TD2E2x6iRxil-8-PYde3fcOA}
-
-# ===========================================================
-# BANNER UPLOAD CONFIGURATION
-# ===========================================================
-banner:
-  upload:
-    dir: ${BANNER_UPLOAD_DIR:uploads/banners}
-
-# ===========================================================
-# SWAGGER/OpenAPI DOCUMENTATION
+# SWAGGER CONFIGURATION
 # ===========================================================
 springdoc:
+
   api-docs:
-    path: /v3/api-docs
     enabled: true
+    path: /v3/api-docs
 
   swagger-ui:
-    path: /swagger-ui.html
     enabled: true
-    operations-sorter: method
-    tags-sorter: alpha
-    try-it-out-enabled: true
-    filter: true
-    display-request-duration: true
-    config-url: /v3/api-docs/swagger-config
-    url: /v3/api-docs
-
-  packages-to-scan: com.example.demo_project_spring_boot.controller
-  paths-to-match: /api/**,/actuator/health
+    path: /swagger-ui.html
 
 # ===========================================================
-# LOGGING CONFIGURATION
+# LOGGING
 # ===========================================================
 logging:
   level:
-    org.springdoc: DEBUG
-    io.swagger.v3: DEBUG
     org.springframework.security: DEBUG
     org.springframework.security.oauth2: DEBUG
-
-server:
-  port: ${PORT:8080}
-  address: 0.0.0.0
-

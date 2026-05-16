@@ -13,13 +13,13 @@ import org.springframework.util.StringUtils;
 @Slf4j
 public class OAuth2ConfigValidator {
 
-    @Value("${spring.security.oauth2.client.registration.google.client-id:}")
+    @Value("${app.oauth2.google.client-id:}")
     private String googleClientId;
 
-    @Value("${spring.security.oauth2.client.registration.google.client-secret:}")
+    @Value("${app.oauth2.google.client-secret:}")
     private String googleClientSecret;
 
-    @Value("${spring.security.oauth2.client.registration.google.redirect-uri:}")
+    @Value("${app.oauth2.authorized-redirect-uri:}")
     private String googleRedirectUri;
 
     @Value("${app.oauth2.authorized-redirect-uri:}")

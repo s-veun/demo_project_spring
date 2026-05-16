@@ -63,116 +63,123 @@ public class SecurityConfig {
     @Autowired
     private CustomOAuth2UserService customOAuth2UserService;
 
+    @Autowired
+    private OAuth2ClientConfig oauth2ClientConfig;
+
     @Value("${app.cors.allowed-origins:http://localhost:3000}")
     private String allowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-        http
-                // Disable CSRF for REST API
-                .csrf(AbstractHttpConfigurer::disable)
+        // Disable CSRF for REST API
+        http.csrf(AbstractHttpConfigurer::disable);
 
-                // Configure CORS
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        // Configure CORS
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
-                // Stateless session management
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        // Stateless session management
+        http.sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-                // Custom authentication entry point for 401 errors
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(customAuthenticationEntryPoint)
-                        .accessDeniedHandler(customAccessDeniedHandler))
+        // Custom authentication entry point for 401 / 403 errors
+        http.exceptionHandling(ex -> ex
+                .authenticationEntryPoint(customAuthenticationEntryPoint)
+                .accessDeniedHandler(customAccessDeniedHandler));
 
-                // OAuth2 Login Configuration
-                .oauth2Login(oauth2 -> oauth2
-                        .authorizationEndpoint(auth -> auth
-                                .baseUri("/oauth2/authorization"))
-                        .redirectionEndpoint(redirect -> redirect
-                                .baseUri("/login/oauth2/code/*"))
-                        .userInfoEndpoint(userInfo -> userInfo
-                                .userService(customOAuth2UserService))
-                        .successHandler(oauth2AuthenticationSuccessHandler)
-                        .failureHandler(oauth2AuthenticationFailureHandler))
+        // OAuth2 Login — only wired when at least one provider has real credentials
+        if (oauth2ClientConfig.hasAnyRegistration()) {
+            http.oauth2Login(oauth2 -> oauth2
+                    .authorizationEndpoint(auth -> auth
+                            .baseUri("/oauth2/authorization"))
+                    .redirectionEndpoint(redirect -> redirect
+                            .baseUri("/login/oauth2/code/*"))
+                    .userInfoEndpoint(userInfo -> userInfo
+                            .userService(customOAuth2UserService))
+                    .successHandler(oauth2AuthenticationSuccessHandler)
+                    .failureHandler(oauth2AuthenticationFailureHandler));
+        }
 
-                // Route Authorization Configuration
-                .authorizeHttpRequests(auth -> auth
+        // Route Authorization Configuration
+        http.authorizeHttpRequests(auth -> auth
 
-                        // Root, Error, Favicon
-                        .requestMatchers("/", "/error", "/favicon.ico").permitAll()
+                // Root, Error, Favicon
+                .requestMatchers("/", "/error", "/favicon.ico").permitAll()
 
-                        // CORS Preflight Requests
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // CORS Preflight Requests
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Swagger & OpenAPI Paths
-                        .requestMatchers(
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/v3/api-docs",
-                                "/swagger-resources/**",
-                                "/webjars/**"
-                        ).permitAll()
+                // Swagger & OpenAPI Paths
+                .requestMatchers(
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**",
+                        "/v3/api-docs",
+                        "/swagger-resources/**",
+                        "/webjars/**"
+                ).permitAll()
 
-                        // Public Authentication Routes
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/v1/auth/register",
-                                "/api/v1/auth/login",
-                                "/api/v1/auth/refresh",
-                                "/api/v1/auth/refresh-token",
-                                "/api/v1/admin/register",
-                                "/api/v1/admin/login"
-                        ).permitAll()
+                // Public Authentication Routes
+                .requestMatchers(HttpMethod.POST,
+                        "/api/v1/auth/register",
+                        "/api/v1/auth/login",
+                        "/api/v1/auth/refresh",
+                        "/api/v1/auth/refresh-token",
+                        "/api/v1/admin/register",
+                        "/api/v1/admin/login"
+                ).permitAll()
 
-                        // Legacy UserController Auth Endpoints (deprecated - use /api/v1/auth/** instead)
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/v1/register",
-                                "/api/v1/login"
-                        ).permitAll()
+                // Legacy UserController Auth Endpoints (deprecated - use /api/v1/auth/** instead)
+                .requestMatchers(HttpMethod.POST,
+                        "/api/v1/register",
+                        "/api/v1/login"
+                ).permitAll()
 
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/v1/auth/oauth2/google",
-                                "/api/v1/auth/oauth2/facebook"
-                        ).permitAll()
+                .requestMatchers(HttpMethod.GET,
+                        "/api/v1/auth/oauth2/google",
+                        "/api/v1/auth/oauth2/facebook"
+                ).permitAll()
 
-                        // OAuth2 Authorization Endpoints
-                        .requestMatchers(
-                                "/oauth2/**",
-                                "/login/oauth2/**",
-                                "/login"
-                        ).permitAll()
+                // OAuth2 Authorization Endpoints
+                .requestMatchers(
+                        "/oauth2/**",
+                        "/login/oauth2/**",
+                        "/login"
+                ).permitAll()
 
-                        // Public GET Routes (Products/Categories)
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/v1/products/**",
-                                "/api/v1/categories/**",
-                                "/api/v1/reviews/**"
-                        ).permitAll()
+                // Public GET Routes (Products/Categories)
+                .requestMatchers(HttpMethod.GET,
+                        "/api/v1/products/**",
+                        "/api/v1/categories/**",
+                        "/api/v1/reviews/**"
+                ).permitAll()
 
-                        // Actuator Health Check
-                        .requestMatchers("/actuator/**", "/actuator/health").permitAll()
+                // Static file uploads
+                .requestMatchers("/uploads/**").permitAll()
 
-                        // ADMIN Role Routes
-                        .requestMatchers(HttpMethod.POST, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                // Actuator Health Check
+                .requestMatchers("/actuator/**", "/actuator/health").permitAll()
 
-                        // Authenticated User Routes
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/v1/user/**",
-                                "/api/v1/profile/**"
-                        ).hasAnyRole("USER", "ADMIN")
-                        .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").hasAnyRole("USER", "ADMIN")
+                // ADMIN Role Routes
+                .requestMatchers(HttpMethod.POST, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
-                        // Any other request requires authentication
-                        .anyRequest().authenticated()
-                )
+                // Authenticated User Routes
+                .requestMatchers(HttpMethod.GET,
+                        "/api/v1/user/**",
+                        "/api/v1/profile/**"
+                ).hasAnyRole("USER", "ADMIN")
+                .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").hasAnyRole("USER", "ADMIN")
 
-                // Authentication Provider and Filters
-                .authenticationProvider(authenticationProvider())
+                // Any other request requires authentication
+                .anyRequest().authenticated()
+        );
+
+        // Authentication Provider and JWT Filter
+        http.authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

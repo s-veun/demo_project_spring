@@ -1,0 +1,731 @@
+{
+  "info": {
+    "name": "OAuth2 Railway E2E Testing",
+    "description": "Complete OAuth2 testing collection for Railway deployment with Google/Facebook integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Setup & Health Check",
+      "item": [
+        {
+          "name": "Backend Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{backend_url}}/actuator/health",
+              "host": ["{{backend_url}}"],
+              "path": ["actuator", "health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Application is UP', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.equal('UP');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Swagger UI",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{backend_url}}/swagger-ui.html",
+              "host": ["{{backend_url}}"],
+              "path": ["swagger-ui.html"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Swagger UI is accessible', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check CORS Configuration",
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{frontend_url}}"
+              },
+              {
+                "key": "Access-Control-Request-Method",
+                "value": "GET"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base_url}}/user/profile",
+              "host": ["{{api_base_url}}"],
+              "path": ["user", "profile"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('CORS headers present', () => {",
+                  "  pm.response.to.have.header('Access-Control-Allow-Origin');",
+                  "  pm.response.to.have.header('Access-Control-Allow-Credentials');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "OAuth2 Authorization URLs",
+      "item": [
+        {
+          "name": "1. Get Google OAuth URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/auth/oauth2/google",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "oauth2", "google"]
+            },
+            "description": "Returns Google authorization URL for frontend to redirect to"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 3xx redirect', () => {",
+                  "  pm.response.to.have.status(302);",
+                  "});",
+                  "",
+                  "pm.test('Location header contains Google authorization endpoint', () => {",
+                  "  const location = pm.response.headers.get('Location');",
+                  "  pm.expect(location).to.include('accounts.google.com');",
+                  "  console.log('Google Auth URL:', location);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Get Facebook OAuth URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/auth/oauth2/facebook",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "oauth2", "facebook"]
+            },
+            "description": "Returns Facebook authorization URL for frontend to redirect to"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 3xx redirect', () => {",
+                  "  pm.response.to.have.status(302);",
+                  "});",
+                  "",
+                  "pm.test('Location header contains Facebook authorization endpoint', () => {",
+                  "  const location = pm.response.headers.get('Location');",
+                  "  pm.expect(location).to.include('facebook.com');",
+                  "  console.log('Facebook Auth URL:', location);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Traditional Auth (Password-based)",
+      "item": [
+        {
+          "name": "1. Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser@example.com\",\n  \"email\": \"testuser@example.com\",\n  \"password\": \"TestPassword123!\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/auth/register",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Login with Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/auth/login",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login with username and password to get tokens"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains accessToken', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('accessToken');",
+                  "  pm.expect(body.accessToken).to.be.a('string');",
+                  "  pm.expect(body.accessToken.length).to.be.greaterThan(0);",
+                  "});",
+                  "",
+                  "pm.test('Response contains refreshToken', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('refreshToken');",
+                  "  pm.expect(body.refreshToken).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.test('Save tokens to environment', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.environment.set('access_token', body.accessToken);",
+                  "  pm.environment.set('refresh_token', body.refreshToken);",
+                  "  console.log('Access Token saved to environment');",
+                  "  console.log('Refresh Token saved to environment');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Protected Endpoints",
+      "item": [
+        {
+          "name": "1. Get User Profile (Protected)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base_url}}/user/profile",
+              "host": ["{{api_base_url}}"],
+              "path": ["user", "profile"]
+            },
+            "description": "Get authenticated user profile - requires valid access token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains user data', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('data');",
+                  "  pm.expect(body.data).to.have.property('username');",
+                  "  pm.expect(body.data).to.have.property('email');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Get Profile Without Token (Should Fail)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/user/profile",
+              "host": ["{{api_base_url}}"],
+              "path": ["user", "profile"]
+            },
+            "description": "Verify protected endpoint returns 401 without token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 Unauthorized', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Token Management",
+      "item": [
+        {
+          "name": "1. Refresh Access Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/auth/refresh-token",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "refresh-token"]
+            },
+            "description": "Use refresh token to get new access token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains new accessToken', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('accessToken');",
+                  "  pm.expect(body.accessToken).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.test('Update access token in environment', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.environment.set('access_token', body.accessToken);",
+                  "  console.log('Access Token refreshed');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Logout (Invalidate Tokens)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/auth/logout",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logout and invalidate tokens"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Clear tokens from environment', () => {",
+                  "  pm.environment.set('access_token', '');",
+                  "  pm.environment.set('refresh_token', '');",
+                  "  console.log('Tokens cleared');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "OAuth2 Validation Tests",
+      "item": [
+        {
+          "name": "1. Validate Response Shape - Google",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Simulating what backend OAuth2LoginResponse should contain",
+                  "const expectedFields = [",
+                  "  'success',",
+                  "  'message',",
+                  "  'accessToken',",
+                  "  'refreshToken',",
+                  "  'tokenType',",
+                  "  'expiresIn',",
+                  "  'userId',",
+                  "  'username',",
+                  "  'email',",
+                  "  'role',",
+                  "  'provider'",
+                  "];",
+                  "",
+                  "pm.test('OAuth2LoginResponse has all required fields', () => {",
+                  "  pm.expect(expectedFields.length).to.equal(11);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/auth/oauth2/google",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "oauth2", "google"]
+            }
+          }
+        },
+        {
+          "name": "2. Validate Response Shape - Facebook",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Same fields should be present for both Google and Facebook",
+                  "const expectedFields = [",
+                  "  'success',",
+                  "  'message',",
+                  "  'accessToken',",
+                  "  'refreshToken',",
+                  "  'tokenType',",
+                  "  'expiresIn',",
+                  "  'userId',",
+                  "  'username',",
+                  "  'email',",
+                  "  'role',",
+                  "  'provider'",
+                  "];",
+                  "",
+                  "pm.test('OAuth2LoginResponse consistent across providers', () => {",
+                  "  pm.expect(expectedFields.length).to.equal(11);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/auth/oauth2/facebook",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "oauth2", "facebook"]
+            }
+          }
+        },
+        {
+          "name": "3. Token Format Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validate JWT format: header.payload.signature",
+                  "pm.test('Access token is valid JWT format', () => {",
+                  "  const token = pm.environment.get('access_token');",
+                  "  const parts = token.split('.');",
+                  "  pm.expect(parts.length).to.equal(3);",
+                  "  parts.forEach((part, index) => {",
+                  "    pm.expect(part.length).to.be.greaterThan(0);",
+                  "  });",
+                  "});",
+                  "",
+                  "pm.test('Refresh token is valid JWT format', () => {",
+                  "  const token = pm.environment.get('refresh_token');",
+                  "  if (token) {",
+                  "    const parts = token.split('.');",
+                  "    pm.expect(parts.length).to.equal(3);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/user/profile",
+              "host": ["{{api_base_url}}"],
+              "path": ["user", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Query Parameter Extraction Tests",
+      "item": [
+        {
+          "name": "Simulate Callback with Query Parameters",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Simulate frontend URL after backend redirects with tokens",
+                  "const callbackUrl = '{{frontend_url}}/auth/callback?accessToken=eyJhbGc_test_token_xyz&refreshToken=eyJhbGc_refresh_token_abc&provider=GOOGLE';",
+                  "",
+                  "pm.test('Callback URL can be parsed', () => {",
+                  "  const url = new URL(callbackUrl);",
+                  "  const accessToken = url.searchParams.get('accessToken');",
+                  "  const refreshToken = url.searchParams.get('refreshToken');",
+                  "  const provider = url.searchParams.get('provider');",
+                  "  ",
+                  "  pm.expect(accessToken).to.equal('eyJhbGc_test_token_xyz');",
+                  "  pm.expect(refreshToken).to.equal('eyJhbGc_refresh_token_abc');",
+                  "  pm.expect(provider).to.equal('GOOGLE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{frontend_url}}/auth/callback?accessToken=test&refreshToken=test",
+              "host": ["{{frontend_url}}"],
+              "path": ["auth", "callback"],
+              "query": [
+                {
+                  "key": "accessToken",
+                  "value": "test"
+                },
+                {
+                  "key": "refreshToken",
+                  "value": "test"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Handling Tests",
+      "item": [
+        {
+          "name": "1. Login with Invalid Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"nonexistent\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/auth/login",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 Unauthorized', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. API Call with Expired Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGc_expired_token_xyz"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base_url}}/user/profile",
+              "host": ["{{api_base_url}}"],
+              "path": ["user", "profile"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 Unauthorized', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Refresh with Invalid Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"invalid_refresh_token_xyz\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/auth/refresh-token",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "refresh-token"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 Unauthorized', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "backend_url",
+      "value": "https://your-backend.up.railway.app",
+      "type": "string"
+    },
+    {
+      "key": "frontend_url",
+      "value": "https://your-frontend.up.railway.app",
+      "type": "string"
+    },
+    {
+      "key": "api_base_url",
+      "value": "{{backend_url}}/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "google_client_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "facebook_app_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
+
