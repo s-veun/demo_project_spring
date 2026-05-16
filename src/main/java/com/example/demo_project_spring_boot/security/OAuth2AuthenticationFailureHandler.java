@@ -1,7 +1,6 @@
 package com.example.demo_project_spring_boot.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -28,14 +27,24 @@ public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationF
     @Value("${app.oauth2.authorized-redirect-uri:}")
     private String authorizedRedirectUri;
 
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
+
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
-                                       AuthenticationException exception) throws IOException, ServletException {
+                                       AuthenticationException exception) throws IOException {
 
         log.error("OAuth2 authentication failed: {}", exception.getMessage());
 
-        if (StringUtils.hasText(authorizedRedirectUri)) {
-            String redirect = UriComponentsBuilder.fromUriString(authorizedRedirectUri)
+        String frontendRedirectUri = request.getParameter("frontend_redirect_uri");
+        if (!StringUtils.hasText(frontendRedirectUri)) {
+            frontendRedirectUri = StringUtils.hasText(authorizedRedirectUri)
+                    ? authorizedRedirectUri
+                    : frontendUrl + "/auth/success";
+        }
+
+        if (StringUtils.hasText(frontendRedirectUri)) {
+            String redirect = UriComponentsBuilder.fromUriString(frontendRedirectUri)
                     .queryParam("error", "oauth2_authentication_failed")
                     .queryParam("message", exception.getMessage() != null ? exception.getMessage() : "OAuth2 authentication failed")
                     .build()

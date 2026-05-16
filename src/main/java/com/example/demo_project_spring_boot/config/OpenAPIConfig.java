@@ -28,9 +28,6 @@ public class OpenAPIConfig {
 
         // ✅ Schema ត្រឹមត្រូវ: type=string, format=binary
         // OpenAPI 3.0 specification តម្រូវឱ្យប្រើបែបនេះសម្រាប់ file upload
-        Schema<?> binarySchema = new Schema<>()
-                .type("string")
-                .format("binary");
 
         Schema<?> singleFileUploadSchema = new Schema<>()
                 .type("object")
@@ -61,7 +58,7 @@ public class OpenAPIConfig {
                                 ## 🚀 Complete E-Commerce REST API
                                 
                                 **សមត្ថភាពសំខាន់ៗ:**
-                                - Social Authentication APIs (Google/Facebook OAuth2)
+                                - Social Authentication APIs (Google OAuth2)
                                 - JWT Access + Refresh Token Authentication
                                 - Product Management with Cloudinary
                                 - Shopping Cart & Orders
@@ -69,7 +66,7 @@ public class OpenAPIConfig {
                                 - Wishlist & Popularity Tracking
                                 
                                 **របៀបប្រើប្រាស់ Authentication:**
-                                1. Start social login via `GET /api/v1/auth/oauth2/google` or `GET /api/v1/auth/oauth2/facebook`
+                                1. Start social login via `GET /api/v1/auth/oauth2/google`
                                 2. Complete OAuth2 consent screen
                                 3. Receive `accessToken` and `refreshToken`
                                 4. Use `POST /api/v1/auth/refresh-token` for token renewal

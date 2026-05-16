@@ -2,11 +2,8 @@ package com.example.demo_project_spring_boot.security;
 
 import com.example.demo_project_spring_boot.Enum.AuthProvider;
 import com.example.demo_project_spring_boot.config.JwtService;
-import com.example.demo_project_spring_boot.dto.OAuth2LoginResponse;
 import com.example.demo_project_spring_boot.model.User;
 import com.example.demo_project_spring_boot.repository.UserRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -41,16 +38,22 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     @Value("${app.oauth2.authorized-redirect-uri:}")
     private String authorizedRedirectUri;
 
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-                                       Authentication authentication) throws IOException, ServletException {
+                                       Authentication authentication) throws IOException {
 
         try {
             OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
             String registrationId = ((OAuth2AuthenticationToken) authentication)
                     .getAuthorizedClientRegistrationId()
                     .toLowerCase();
-            AuthProvider provider = registrationId.equals("facebook") ? AuthProvider.FACEBOOK : AuthProvider.GOOGLE;
+            if (!"google".equals(registrationId)) {
+                throw new IllegalStateException("Unsupported OAuth2 provider: " + registrationId);
+            }
+            AuthProvider provider = AuthProvider.GOOGLE;
 
             Object appUserId = oauth2User.getAttributes().get(CustomOAuth2UserService.USER_ID_ATTRIBUTE);
             if (appUserId == null) {
@@ -74,38 +77,20 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             user.setRefreshToken(refreshToken);
             userRepository.save(user);
 
-            OAuth2LoginResponse loginResponse = OAuth2LoginResponse.builder()
-                    .success(true)
-                    .message("OAuth2 login successful")
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .userId(user.getId())
-                    .username(user.getUsername())
-                    .email(user.getEmail())
-                    .firstName(user.getFirstName())
-                    .lastName(user.getLastName())
-                    .profileImageUrl(user.getProfileImageUrl())
-                    .role(user.getRole().name())
-                    .provider(provider.name())
-                    .tokenType("Bearer")
-                    .expiresIn(jwtService.getAccessTokenExpirationSeconds())
-                    .build();
-
-            if (StringUtils.hasText(authorizedRedirectUri)) {
-                String redirect = UriComponentsBuilder.fromUriString(authorizedRedirectUri)
-                        .queryParam("accessToken", accessToken)
-                        .queryParam("refreshToken", refreshToken)
-                        .queryParam("provider", provider.name())
-                        .build()
-                        .toUriString();
-                getRedirectStrategy().sendRedirect(request, response, redirect);
-                return;
+            String frontendRedirectUri = request.getParameter("frontend_redirect_uri");
+            if (!StringUtils.hasText(frontendRedirectUri)) {
+                frontendRedirectUri = StringUtils.hasText(authorizedRedirectUri)
+                        ? authorizedRedirectUri
+                        : frontendUrl + "/auth/success";
             }
 
-            response.setContentType("application/json");
-            response.setStatus(HttpServletResponse.SC_OK);
-            response.getWriter().write(new ObjectMapper().writeValueAsString(loginResponse));
-
+            String redirect = UriComponentsBuilder.fromUriString(frontendRedirectUri)
+                    .queryParam("token", accessToken)
+                    .queryParam("refreshToken", refreshToken)
+                    .queryParam("provider", provider.name())
+                    .build()
+                    .toUriString();
+            getRedirectStrategy().sendRedirect(request, response, redirect);
             log.info("OAuth2 authentication successful for userId={} provider={}", user.getId(), provider);
 
         } catch (Exception ex) {

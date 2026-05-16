@@ -22,7 +22,7 @@ public class OAuth2ConfigValidator {
     @Value("${app.oauth2.authorized-redirect-uri:}")
     private String googleRedirectUri;
 
-    @Value("${app.oauth2.authorized-redirect-uri:}")
+    @Value("${app.frontend-url:}")
     private String frontendRedirectUri;
 
     @Value("${SPRING_PROFILES_ACTIVE:}")
@@ -49,7 +49,7 @@ public class OAuth2ConfigValidator {
         log.info("Google redirect URI: {}", googleRedirectUri);
 
         if (StringUtils.hasText(frontendRedirectUri)) {
-            log.info("Frontend OAuth2 callback URI: {}", frontendRedirectUri);
+            log.info("Frontend base URL: {}", frontendRedirectUri);
         }
 
         if (StringUtils.hasText(activeProfiles)) {

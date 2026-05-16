@@ -3,7 +3,6 @@
 This module provides production-oriented social authentication with:
 
 - Continue with Google
-- Continue with Facebook
 - OAuth2 login flow
 - JWT access token + refresh token
 - Stateless protected APIs
@@ -25,20 +24,19 @@ This module provides production-oriented social authentication with:
   - `CustomAccessDeniedHandler`
 - **Persistence**: `User` entity + `UserRepository`
 
-## OAuth2 Flow (Google/Facebook)
+## OAuth2 Flow (Google)
 
-1. Frontend calls `GET /api/v1/auth/oauth2/google` or `GET /api/v1/auth/oauth2/facebook`
+1. Frontend calls `GET /api/v1/auth/oauth2/google`
 2. Backend returns authorization URI (`/oauth2/authorization/{provider}`)
 3. Browser redirects user to provider consent screen
 4. Provider redirects back to `/login/oauth2/code/{provider}`
 5. `CustomOAuth2UserService` normalizes user info and auto-registers/updates user
 6. `OAuth2AuthenticationSuccessHandler` generates JWT tokens and persists active session tokens
-7. Backend returns JSON token payload or redirects to frontend callback (`app.oauth2.authorized-redirect-uri`)
+7. Backend redirects to the frontend callback (`app.oauth2.authorized-redirect-uri`), e.g. `http://localhost:3000/auth/success?token=...`
 
 ## API Endpoints
 
 - `GET /api/v1/auth/oauth2/google`
-- `GET /api/v1/auth/oauth2/facebook`
 - `POST /api/v1/auth/refresh-token`
 - `POST /api/v1/auth/logout`
 - `GET /api/v1/user/profile`
@@ -48,11 +46,7 @@ This module provides production-oriented social authentication with:
 ```bash
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=http://localhost:8080/login/oauth2/code/google
-
-FACEBOOK_APP_ID=
-FACEBOOK_APP_SECRET=
-FACEBOOK_REDIRECT_URI=http://localhost:8080/login/oauth2/code/facebook
+OAUTH2_AUTHORIZED_REDIRECT_URI=http://localhost:3000/auth/success
 
 JWT_SECRET=
 JWT_ACCESS_TOKEN_EXPIRATION=3600000
@@ -62,7 +56,6 @@ SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/postgres
 SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=postgres
 
-OAUTH2_AUTHORIZED_REDIRECT_URI=http://localhost:3000/auth/callback
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 ```
 

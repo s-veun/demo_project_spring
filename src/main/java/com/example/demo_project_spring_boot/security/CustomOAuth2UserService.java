@@ -37,11 +37,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         AuthProvider provider = mapProvider(registrationId);
         Map<String, Object> attributes = oauth2User.getAttributes();
 
-        String email = extractEmail(provider, attributes);
-        String providerId = extractProviderId(provider, attributes);
-        String firstName = extractFirstName(provider, attributes);
-        String lastName = extractLastName(provider, attributes);
-        String profileImage = extractProfileImage(provider, attributes);
+        String email = extractEmail(attributes);
+        String providerId = extractProviderId(attributes);
+        String firstName = extractFirstName(attributes);
+        String lastName = extractLastName(attributes);
+        String profileImage = extractProfileImage(attributes);
 
         if (email == null || email.isBlank()) {
             throw new OAuth2AuthenticationException(new OAuth2Error("invalid_user_info"), "Provider did not return email");
@@ -62,19 +62,22 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return new DefaultOAuth2User(
                 List.of(() -> DEFAULT_ROLE),
                 normalizedAttributes,
-                emailAttributeName(provider)
+                "sub"
         );
     }
 
     private User upsertSocialUser(AuthProvider provider, String providerId, String email, String firstName, String lastName, String profileImage) {
+        Optional<User> existingByProvider = userRepository.findByProviderAndProviderId(provider, providerId);
         Optional<User> existingByEmail = userRepository.findByEmail(email);
 
-        User user = existingByEmail.orElseGet(() -> User.builder()
-                .email(email)
-                .username(email)
-                .role(Role.USER)
-                .isEnabled(true)
-                .build());
+        User user = existingByProvider
+                .or(() -> existingByEmail)
+                .orElseGet(() -> User.builder()
+                        .email(email)
+                        .username(email)
+                        .role(Role.USER)
+                        .isEnabled(true)
+                        .build());
 
         user.setProvider(provider);
         user.setProviderId(providerId);
@@ -87,73 +90,34 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         if (user.getUsername() == null || user.getUsername().isBlank()) {
             user.setUsername(email);
         }
-        if (user.getPassword() == null) {
-            user.setPassword("");
-        }
-
         return userRepository.save(user);
     }
 
     private AuthProvider mapProvider(String registrationId) {
-        return switch (registrationId) {
-            case "google" -> AuthProvider.GOOGLE;
-            case "facebook" -> AuthProvider.FACEBOOK;
-            default -> throw new OAuth2AuthenticationException(new OAuth2Error("unsupported_provider"), "Unsupported provider: " + registrationId);
-        };
-    }
-
-    private String emailAttributeName(AuthProvider provider) {
-        return switch (provider) {
-            case GOOGLE -> "email";
-            case FACEBOOK -> "email";
-            case LOCAL -> "email";
-        };
-    }
-
-    private String extractEmail(AuthProvider provider, Map<String, Object> attributes) {
-        return switch (provider) {
-            case GOOGLE, FACEBOOK, LOCAL -> asString(attributes.get("email"));
-        };
-    }
-
-    private String extractProviderId(AuthProvider provider, Map<String, Object> attributes) {
-        return switch (provider) {
-            case GOOGLE -> asString(attributes.get("sub"));
-            case FACEBOOK -> asString(attributes.get("id"));
-            case LOCAL -> null;
-        };
-    }
-
-    private String extractFirstName(AuthProvider provider, Map<String, Object> attributes) {
-        return switch (provider) {
-            case GOOGLE -> asString(attributes.getOrDefault("given_name", attributes.get("name")));
-            case FACEBOOK -> asString(attributes.getOrDefault("first_name", attributes.get("name")));
-            case LOCAL -> null;
-        };
-    }
-
-    private String extractLastName(AuthProvider provider, Map<String, Object> attributes) {
-        return switch (provider) {
-            case GOOGLE -> asString(attributes.get("family_name"));
-            case FACEBOOK -> asString(attributes.get("last_name"));
-            case LOCAL -> null;
-        };
-    }
-
-    private String extractProfileImage(AuthProvider provider, Map<String, Object> attributes) {
-        if (provider == AuthProvider.GOOGLE) {
-            return asString(attributes.get("picture"));
+        if (!"google".equals(registrationId)) {
+            throw new OAuth2AuthenticationException(new OAuth2Error("unsupported_provider"), "Unsupported provider: " + registrationId);
         }
-        if (provider == AuthProvider.FACEBOOK) {
-            Object picture = attributes.get("picture");
-            if (picture instanceof Map<?, ?> pictureMap) {
-                Object data = pictureMap.get("data");
-                if (data instanceof Map<?, ?> dataMap) {
-                    return asString(dataMap.get("url"));
-                }
-            }
-        }
-        return null;
+        return AuthProvider.GOOGLE;
+    }
+
+    private String extractEmail(Map<String, Object> attributes) {
+        return asString(attributes.get("email"));
+    }
+
+    private String extractProviderId(Map<String, Object> attributes) {
+        return asString(attributes.get("sub"));
+    }
+
+    private String extractFirstName(Map<String, Object> attributes) {
+        return asString(attributes.getOrDefault("given_name", attributes.get("name")));
+    }
+
+    private String extractLastName(Map<String, Object> attributes) {
+        return asString(attributes.get("family_name"));
+    }
+
+    private String extractProfileImage(Map<String, Object> attributes) {
+        return asString(attributes.get("picture"));
     }
 
     private String asString(Object value) {

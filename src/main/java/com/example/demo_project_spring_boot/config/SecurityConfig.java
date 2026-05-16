@@ -36,7 +36,7 @@ import java.util.List;
  */
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired
@@ -136,8 +136,7 @@ public class SecurityConfig {
                 ).permitAll()
 
                 .requestMatchers(HttpMethod.GET,
-                        "/api/v1/auth/oauth2/google",
-                        "/api/v1/auth/oauth2/facebook"
+                        "/api/v1/auth/oauth2/google"
                 ).permitAll()
 
                 // OAuth2 Authorization Endpoints

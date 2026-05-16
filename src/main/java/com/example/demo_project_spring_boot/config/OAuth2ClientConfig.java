@@ -21,18 +21,8 @@ import java.util.List;
 /**
  * Conditional OAuth2 client registration.
  * <p>
- * Spring Boot's built-in {@code OAuth2ClientAutoConfiguration} validates at startup that
- * {@code client-id} is non-empty.  We exclude that autoconfiguration (see
- * {@code application.properties}) and build the {@link ClientRegistrationRepository} here,
- * only adding providers whose credentials are actually supplied via environment variables.
- * <p>
- * Required env vars:
- * <ul>
- *   <li>Google  — {@code GOOGLE_CLIENT_ID} + {@code GOOGLE_CLIENT_SECRET}</li>
- *   <li>Facebook — {@code FACEBOOK_APP_ID} + {@code FACEBOOK_APP_SECRET}</li>
- * </ul>
- * When none are set the application starts normally; social-login endpoints simply return
- * an appropriate error at runtime.
+ * The application only enables Google login when the Google credentials are present.
+ * If the credentials are missing, the app still starts and social-login endpoints remain disabled.
  */
 @Configuration
 @Slf4j
@@ -46,15 +36,6 @@ public class OAuth2ClientConfig {
 
     @Value("${app.oauth2.google.client-secret:}")
     private String googleClientSecret;
-
-    // -----------------------------------------------------------------------
-    // Facebook credentials  (env: FACEBOOK_APP_ID / FACEBOOK_APP_SECRET)
-    // -----------------------------------------------------------------------
-    @Value("${app.oauth2.facebook.client-id:}")
-    private String facebookClientId;
-
-    @Value("${app.oauth2.facebook.client-secret:}")
-    private String facebookClientSecret;
 
     // -----------------------------------------------------------------------
     // ClientRegistrationRepository — only includes providers with credentials
@@ -71,13 +52,6 @@ public class OAuth2ClientConfig {
             log.warn("⚠️  GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set — Google login disabled.");
         }
 
-        if (StringUtils.hasText(facebookClientId) && StringUtils.hasText(facebookClientSecret)) {
-            registrations.add(buildFacebookRegistration());
-            log.info("✅ Facebook OAuth2 client registered (clientId={}...)", facebookClientId.substring(0, Math.min(8, facebookClientId.length())));
-        } else {
-            log.warn("⚠️  FACEBOOK_APP_ID / FACEBOOK_APP_SECRET not set — Facebook login disabled.");
-        }
-
         if (registrations.isEmpty()) {
             log.warn("⚠️  No OAuth2 providers configured. Social login is fully disabled.");
             // Return a no-op repo so SecurityConfig can still call oauth2Login() safely.
@@ -90,8 +64,7 @@ public class OAuth2ClientConfig {
 
     /** True when at least one provider has credentials; used by SecurityConfig. */
     public boolean hasAnyRegistration() {
-        return (StringUtils.hasText(googleClientId) && StringUtils.hasText(googleClientSecret))
-                || (StringUtils.hasText(facebookClientId) && StringUtils.hasText(facebookClientSecret));
+        return StringUtils.hasText(googleClientId) && StringUtils.hasText(googleClientSecret);
     }
 
     // -----------------------------------------------------------------------
@@ -123,27 +96,11 @@ public class OAuth2ClientConfig {
                 .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
                 .scope("openid", "profile", "email")
                 .authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
-                .tokenUri("https://www.googleapis.com/oauth2/v4/token")
+                .tokenUri("https://oauth2.googleapis.com/token")
                 .userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
                 .userNameAttributeName("sub")
                 .jwkSetUri("https://www.googleapis.com/oauth2/v3/certs")
                 .clientName("Google")
-                .build();
-    }
-
-    private ClientRegistration buildFacebookRegistration() {
-        return ClientRegistration.withRegistrationId("facebook")
-                .clientId(facebookClientId)
-                .clientSecret(facebookClientSecret)
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
-                .scope("public_profile", "email")
-                .authorizationUri("https://www.facebook.com/v18.0/dialog/oauth")
-                .tokenUri("https://graph.facebook.com/v18.0/oauth/access_token")
-                .userInfoUri("https://graph.facebook.com/me?fields=id,name,email,picture")
-                .userNameAttributeName("id")
-                .clientName("Facebook")
                 .build();
     }
 }

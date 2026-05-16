@@ -29,7 +29,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Social Authentication APIs", description = "Continue with Google, Continue with Facebook, refresh token, secure logout, and profile flow integration")
+@Tag(name = "Social Authentication APIs", description = "Continue with Google, refresh token, secure logout, and profile flow integration")
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
@@ -212,8 +212,8 @@ public class AuthenticationController {
 
     /**
      * Google OAuth2 Login endpoint (informational)
-     * The actual OAuth2 flow is handled by Spring Security
-     * Frontend should redirect to /oauth2/authorization/google
+     * The actual OAuth2 flow is handled by Spring Security.
+     * Frontend should redirect to /oauth2/authorization/google.
      */
     @GetMapping("/oauth2/google")
     @Operation(summary = "Continue with Google", description = "Returns authorization URL for Google OAuth2 login")
@@ -222,16 +222,6 @@ public class AuthenticationController {
                 .success(true)
                 .message("Continue with Google")
                 .data(Map.of("authorizationUri", "/oauth2/authorization/google"))
-                .build());
-    }
-
-    @GetMapping("/oauth2/facebook")
-    @Operation(summary = "Continue with Facebook", description = "Returns authorization URL for Facebook OAuth2 login")
-    public ResponseEntity<?> getFacebookLoginInfo() {
-        return ResponseEntity.ok(ApiResult.builder()
-                .success(true)
-                .message("Continue with Facebook")
-                .data(Map.of("authorizationUri", "/oauth2/authorization/facebook"))
                 .build());
     }
 

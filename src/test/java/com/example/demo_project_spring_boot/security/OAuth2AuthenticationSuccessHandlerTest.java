@@ -3,7 +3,7 @@ package com.example.demo_project_spring_boot.security;
 import com.example.demo_project_spring_boot.Enum.AuthProvider;
 import com.example.demo_project_spring_boot.config.JwtService;
 import com.example.demo_project_spring_boot.dto.OAuth2LoginResponse;
-import com.example.demo_project_spring_boot.model.Role;
+import com.example.demo_project_spring_boot.Enum.Role;
 import com.example.demo_project_spring_boot.model.User;
 import com.example.demo_project_spring_boot.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.*;
 
@@ -41,8 +42,8 @@ public class OAuth2AuthenticationSuccessHandlerTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         successHandler = new OAuth2AuthenticationSuccessHandler();
-        successHandler.userRepository = userRepository;
-        successHandler.jwtService = jwtService;
+        ReflectionTestUtils.setField(successHandler, "userRepository", userRepository);
+        ReflectionTestUtils.setField(successHandler, "jwtService", jwtService);
         objectMapper = new ObjectMapper();
     }
 

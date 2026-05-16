@@ -147,7 +147,9 @@ public class JwtService {
      */
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+        return username != null
+                && username.equals(userDetails.getUsername())
+                && !isTokenExpired(token);
     }
 
     /**
@@ -155,7 +157,9 @@ public class JwtService {
      */
     public boolean isTokenValidByUsername(String token, String username) {
         final String extractedUsername = extractUsername(token);
-        return (extractedUsername.equals(username)) && !isTokenExpired(token);
+        return extractedUsername != null
+                && extractedUsername.equals(username)
+                && !isTokenExpired(token);
     }
 
     /**
