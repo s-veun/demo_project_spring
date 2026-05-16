@@ -49,14 +49,11 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             String registrationId = ((OAuth2AuthenticationToken) authentication)
                     .getAuthorizedClientRegistrationId()
                     .toLowerCase();
-            if (!"google".equals(registrationId)) {
-                throw new IllegalStateException("Unsupported OAuth2 provider: " + registrationId);
-            }
-            AuthProvider provider = AuthProvider.GOOGLE;
+            AuthProvider provider = resolveProvider(registrationId);
             String email = asString(oauth2User.getAttributes().get("email"));
             String fullName = asString(oauth2User.getAttributes().get("name"));
-            String picture = asString(oauth2User.getAttributes().get("picture"));
-            String providerId = asString(oauth2User.getAttributes().get("sub"));
+            String picture = extractProfileImage(provider, oauth2User);
+            String providerId = extractProviderId(provider, oauth2User);
 
             Object appUserId = oauth2User.getAttributes().get(CustomOAuth2UserService.USER_ID_ATTRIBUTE);
             User user = resolveAuthenticatedUser(appUserId, provider, providerId, email, fullName, picture);
@@ -120,23 +117,28 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         }
 
         if (!StringUtils.hasText(email)) {
-            throw new IllegalStateException("Google account did not return email");
+            if (provider == AuthProvider.FACEBOOK && StringUtils.hasText(providerId)) {
+                email = "facebook_" + providerId + "@oauth.local";
+            } else {
+                throw new IllegalStateException("OAuth2 provider did not return email");
+            }
         }
+        final String resolvedEmail = email;
 
         Optional<User> existingByProvider = StringUtils.hasText(providerId)
                 ? userRepository.findByProviderAndProviderId(provider, providerId)
                 : Optional.empty();
 
         User user = existingByProvider
-                .or(() -> userRepository.findByEmail(email))
+                .or(() -> userRepository.findByEmail(resolvedEmail))
                 .orElseGet(() -> User.builder()
-                        .email(email)
-                        .username(email)
+                        .email(resolvedEmail)
+                        .username(resolvedEmail)
                         .role(Role.USER)
                         .isEnabled(true)
                         .build());
 
-        user.setEmail(email);
+        user.setEmail(resolvedEmail);
         if (!StringUtils.hasText(user.getUsername())) {
             user.setUsername(email);
         }
@@ -165,6 +167,38 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
     private String asString(Object value) {
         return value == null ? null : String.valueOf(value);
+    }
+
+    private AuthProvider resolveProvider(String registrationId) {
+        return switch (registrationId) {
+            case "google" -> AuthProvider.GOOGLE;
+            case "facebook" -> AuthProvider.FACEBOOK;
+            default -> throw new IllegalStateException("Unsupported OAuth2 provider: " + registrationId);
+        };
+    }
+
+    private String extractProviderId(AuthProvider provider, OAuth2User oauth2User) {
+        return switch (provider) {
+            case GOOGLE -> asString(oauth2User.getAttributes().get("sub"));
+            case FACEBOOK -> asString(oauth2User.getAttributes().get("id"));
+            default -> null;
+        };
+    }
+
+    private String extractProfileImage(AuthProvider provider, OAuth2User oauth2User) {
+        if (provider == AuthProvider.GOOGLE) {
+            return asString(oauth2User.getAttributes().get("picture"));
+        }
+
+        Object picture = oauth2User.getAttributes().get("picture");
+        if (picture instanceof java.util.Map<?, ?> pictureMap) {
+            Object data = pictureMap.get("data");
+            if (data instanceof java.util.Map<?, ?> dataMap) {
+                return asString(dataMap.get("url"));
+            }
+        }
+
+        return null;
     }
 }
 

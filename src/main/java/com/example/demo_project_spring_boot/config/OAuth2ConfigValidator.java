@@ -22,6 +22,12 @@ public class OAuth2ConfigValidator {
     @Value("${spring.security.oauth2.client.registration.google.redirect-uri:{baseUrl}/login/oauth2/code/{registrationId}}")
     private String googleRedirectUriTemplate;
 
+    @Value("${spring.security.oauth2.client.registration.facebook.client-id:}")
+    private String facebookClientId;
+
+    @Value("${spring.security.oauth2.client.registration.facebook.client-secret:}")
+    private String facebookClientSecret;
+
     @Value("${app.frontend-url:}")
     private String frontendRedirectUri;
 
@@ -38,16 +44,24 @@ public class OAuth2ConfigValidator {
             log.warn("OAuth2 Google configuration is incomplete. Google login will fail with invalid_client.");
             log.warn("Missing values => clientId:{}, clientSecret:{}, redirectUri:{}",
                     hasGoogleId, hasGoogleSecret, hasGoogleRedirect);
-            return;
+        } else {
+            if (looksLikePlaceholder(googleClientId) || looksLikePlaceholder(googleClientSecret)) {
+                throw new IllegalStateException("Google OAuth2 credentials are placeholders. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET correctly.");
+            }
+
+            log.info("Google OAuth2 client is configured.");
+            log.info("Google redirect URI template: {}", googleRedirectUriTemplate);
+            log.info("Make sure Google Console redirect URI EXACTLY matches: https://<your-backend-domain>/login/oauth2/code/google");
         }
 
-        if (looksLikePlaceholder(googleClientId) || looksLikePlaceholder(googleClientSecret)) {
-            throw new IllegalStateException("Google OAuth2 credentials are placeholders. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET correctly.");
+        boolean hasFacebookId = StringUtils.hasText(facebookClientId);
+        boolean hasFacebookSecret = StringUtils.hasText(facebookClientSecret);
+        if (hasFacebookId ^ hasFacebookSecret) {
+            log.warn("OAuth2 Facebook configuration is incomplete. Set both FACEBOOK_APP_ID and FACEBOOK_APP_SECRET.");
+        } else if (hasFacebookId) {
+            log.info("Facebook OAuth2 client is configured.");
+            log.info("Make sure Facebook redirect URI EXACTLY matches: https://<your-backend-domain>/login/oauth2/code/facebook");
         }
-
-        log.info("Google OAuth2 client is configured.");
-        log.info("Google redirect URI template: {}", googleRedirectUriTemplate);
-        log.info("Make sure Google Console redirect URI EXACTLY matches: https://<your-backend-domain>/login/oauth2/code/google");
 
         if (StringUtils.hasText(frontendRedirectUri)) {
             log.info("Frontend base URL: {}", frontendRedirectUri);

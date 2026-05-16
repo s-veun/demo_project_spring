@@ -37,6 +37,12 @@ public class OAuth2ClientConfig {
     @Value("${spring.security.oauth2.client.registration.google.client-secret:}")
     private String googleClientSecret;
 
+    @Value("${spring.security.oauth2.client.registration.facebook.client-id:}")
+    private String facebookClientId;
+
+    @Value("${spring.security.oauth2.client.registration.facebook.client-secret:}")
+    private String facebookClientSecret;
+
     // -----------------------------------------------------------------------
     // ClientRegistrationRepository — only includes providers with credentials
     // -----------------------------------------------------------------------
@@ -52,6 +58,13 @@ public class OAuth2ClientConfig {
             log.warn("⚠️  GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set — Google login disabled.");
         }
 
+        if (StringUtils.hasText(facebookClientId) && StringUtils.hasText(facebookClientSecret)) {
+            registrations.add(buildFacebookRegistration());
+            log.info("✅ Facebook OAuth2 client registered (clientId={}...)", facebookClientId.substring(0, Math.min(8, facebookClientId.length())));
+        } else {
+            log.warn("⚠️  FACEBOOK_APP_ID / FACEBOOK_APP_SECRET not set — Facebook login disabled.");
+        }
+
         if (registrations.isEmpty()) {
             log.warn("⚠️  No OAuth2 providers configured. Social login is fully disabled.");
             // Return a no-op repo so SecurityConfig can still call oauth2Login() safely.
@@ -64,7 +77,9 @@ public class OAuth2ClientConfig {
 
     /** True when at least one provider has credentials; used by SecurityConfig. */
     public boolean hasAnyRegistration() {
-        return StringUtils.hasText(googleClientId) && StringUtils.hasText(googleClientSecret);
+        boolean hasGoogle = StringUtils.hasText(googleClientId) && StringUtils.hasText(googleClientSecret);
+        boolean hasFacebook = StringUtils.hasText(facebookClientId) && StringUtils.hasText(facebookClientSecret);
+        return hasGoogle || hasFacebook;
     }
 
     // -----------------------------------------------------------------------
@@ -101,6 +116,22 @@ public class OAuth2ClientConfig {
                 .userNameAttributeName("sub")
                 .jwkSetUri("https://www.googleapis.com/oauth2/v3/certs")
                 .clientName("Google")
+                .build();
+    }
+
+    private ClientRegistration buildFacebookRegistration() {
+        return ClientRegistration.withRegistrationId("facebook")
+                .clientId(facebookClientId)
+                .clientSecret(facebookClientSecret)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                .scope("email", "public_profile")
+                .authorizationUri("https://www.facebook.com/v19.0/dialog/oauth")
+                .tokenUri("https://graph.facebook.com/v19.0/oauth/access_token")
+                .userInfoUri("https://graph.facebook.com/me?fields=id,name,email,picture")
+                .userNameAttributeName("id")
+                .clientName("Facebook")
                 .build();
     }
 }

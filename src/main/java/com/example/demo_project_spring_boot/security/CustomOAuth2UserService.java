@@ -37,17 +37,22 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         AuthProvider provider = mapProvider(registrationId);
         Map<String, Object> attributes = oauth2User.getAttributes();
 
-        String email = extractEmail(attributes);
-        String providerId = extractProviderId(attributes);
+        String email = extractEmail(provider, attributes);
+        String providerId = extractProviderId(provider, attributes);
         String firstName = extractFirstName(attributes);
         String lastName = extractLastName(attributes);
-        String profileImage = extractProfileImage(attributes);
+        String profileImage = extractProfileImage(provider, attributes);
 
-        if (email == null || email.isBlank()) {
-            throw new OAuth2AuthenticationException(new OAuth2Error("invalid_user_info"), "Provider did not return email");
-        }
         if (providerId == null || providerId.isBlank()) {
             throw new OAuth2AuthenticationException(new OAuth2Error("invalid_user_info"), "Provider did not return user id");
+        }
+
+        if (email == null || email.isBlank()) {
+            if (provider == AuthProvider.FACEBOOK) {
+                email = "facebook_" + providerId + "@oauth.local";
+            } else {
+                throw new OAuth2AuthenticationException(new OAuth2Error("invalid_user_info"), "Provider did not return email");
+            }
         }
 
         User user = upsertSocialUser(provider, providerId, email, firstName, lastName, profileImage);
@@ -62,7 +67,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return new DefaultOAuth2User(
                 List.of(() -> DEFAULT_ROLE),
                 normalizedAttributes,
-                "sub"
+                resolvePrincipalNameAttribute(provider)
         );
     }
 
@@ -94,18 +99,26 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     }
 
     private AuthProvider mapProvider(String registrationId) {
-        if (!"google".equals(registrationId)) {
-            throw new OAuth2AuthenticationException(new OAuth2Error("unsupported_provider"), "Unsupported provider: " + registrationId);
-        }
-        return AuthProvider.GOOGLE;
+        return switch (registrationId) {
+            case "google" -> AuthProvider.GOOGLE;
+            case "facebook" -> AuthProvider.FACEBOOK;
+            default -> throw new OAuth2AuthenticationException(new OAuth2Error("unsupported_provider"), "Unsupported provider: " + registrationId);
+        };
     }
 
-    private String extractEmail(Map<String, Object> attributes) {
+    private String extractEmail(AuthProvider provider, Map<String, Object> attributes) {
+        if (provider == AuthProvider.FACEBOOK) {
+            return asString(attributes.get("email"));
+        }
         return asString(attributes.get("email"));
     }
 
-    private String extractProviderId(Map<String, Object> attributes) {
-        return asString(attributes.get("sub"));
+    private String extractProviderId(AuthProvider provider, Map<String, Object> attributes) {
+        return switch (provider) {
+            case GOOGLE -> asString(attributes.get("sub"));
+            case FACEBOOK -> asString(attributes.get("id"));
+            default -> null;
+        };
     }
 
     private String extractFirstName(Map<String, Object> attributes) {
@@ -116,8 +129,26 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return asString(attributes.get("family_name"));
     }
 
-    private String extractProfileImage(Map<String, Object> attributes) {
-        return asString(attributes.get("picture"));
+    private String extractProfileImage(AuthProvider provider, Map<String, Object> attributes) {
+        if (provider == AuthProvider.GOOGLE) {
+            return asString(attributes.get("picture"));
+        }
+
+        if (provider == AuthProvider.FACEBOOK) {
+            Object picture = attributes.get("picture");
+            if (picture instanceof Map<?, ?> pictureMap) {
+                Object data = pictureMap.get("data");
+                if (data instanceof Map<?, ?> dataMap) {
+                    return asString(dataMap.get("url"));
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private String resolvePrincipalNameAttribute(AuthProvider provider) {
+        return provider == AuthProvider.FACEBOOK ? "id" : "sub";
     }
 
     private String asString(Object value) {

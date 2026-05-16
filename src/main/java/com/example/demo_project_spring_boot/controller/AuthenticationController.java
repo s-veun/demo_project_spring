@@ -225,6 +225,16 @@ public class AuthenticationController {
                 .build());
     }
 
+    @GetMapping("/oauth2/facebook")
+    @Operation(summary = "Continue with Facebook", description = "Returns authorization URL for Facebook OAuth2 login")
+    public ResponseEntity<?> getFacebookLoginInfo() {
+        return ResponseEntity.ok(ApiResult.builder()
+                .success(true)
+                .message("Continue with Facebook")
+                .data(Map.of("authorizationUri", "/oauth2/authorization/facebook"))
+                .build());
+    }
+
     private String extractBearerToken(String authHeader) {
         if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
             return null;

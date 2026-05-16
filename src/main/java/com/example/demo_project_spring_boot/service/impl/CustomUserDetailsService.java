@@ -27,7 +27,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getUsername())
-                .password(user.getPassword())
+                .password(user.getPassword() == null ? "{noop}oauth2-user" : user.getPassword())
                 .disabled(!Boolean.TRUE.equals(user.getIsEnabled()))
                 .roles(user.getRole().name())
                 .build();

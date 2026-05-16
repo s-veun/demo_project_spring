@@ -1,6 +1,6 @@
-# Google OAuth2 Production Implementation (Spring Boot 3 + Railway + Next.js)
+# Google/Facebook OAuth2 Production Implementation (Spring Boot 3 + Railway + Next.js)
 
-This runbook fixes `400 redirect_uri_mismatch` and documents end-to-end Google login with JWT.
+This runbook fixes `redirect_uri_mismatch` issues and documents end-to-end Google/Facebook login with JWT.
 
 ## 1) Google Cloud Console (must match exactly)
 
@@ -17,6 +17,17 @@ Important:
 - Redirect URI comparison is exact (scheme, host, port, path, trailing slash).
 - `.../google` is valid, `.../google/` is different and will fail.
 
+## 1.1) Facebook App Dashboard (must match exactly)
+
+In Meta for Developers:
+
+- Add **Facebook Login** product.
+- Add Valid OAuth Redirect URIs:
+  - `http://localhost:8080/login/oauth2/code/facebook`
+  - `https://demoprojectspring-production.up.railway.app/login/oauth2/code/facebook`
+- Turn on **Client OAuth Login** and **Web OAuth Login**.
+- If app is in development mode, add test users.
+
 ## 2) Backend OAuth2/JWT config (implemented)
 
 Implemented in:
@@ -30,6 +41,7 @@ Implemented in:
 
 Key points:
 - Google registration uses Spring Security standard properties.
+- Facebook registration uses Spring Security standard properties.
 - Redirect template is `{baseUrl}/login/oauth2/code/{registrationId}`.
 - `server.forward-headers-strategy=framework` is enabled so Railway forwarded headers produce correct HTTPS callback URI.
 - JWT filter skips `/api/v1/auth/**`, `/oauth2/**`, `/login/**`.
@@ -43,6 +55,8 @@ Set in Railway service variables:
 
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
+- `FACEBOOK_APP_ID`
+- `FACEBOOK_APP_SECRET`
 - `JWT_SECRET`
 - `JWT_SECRET_FORMAT=plain` (unless your secret is Base64)
 - `FRONTEND_URL=https://your-frontend-domain.com`
@@ -52,17 +66,18 @@ Set in Railway service variables:
 
 Notes:
 - Keep backend callback in Google Console as Railway backend URL (`/login/oauth2/code/google`).
+- Keep backend callback in Facebook app as Railway backend URL (`/login/oauth2/code/facebook`).
 - Keep frontend success URL in app env (`OAUTH2_AUTHORIZED_REDIRECT_URI`).
 
 ## 4) Frontend flow (Next.js)
 
 Implemented flow:
-1. User clicks Google login button.
-2. Frontend navigates to backend: `/oauth2/authorization/google`.
-3. Google authenticates user.
-4. Backend callback receives code at `/login/oauth2/code/google`.
+1. User clicks Google or Facebook login button.
+2. Frontend navigates to backend: `/oauth2/authorization/{provider}`.
+3. Provider authenticates user.
+4. Backend callback receives code at `/login/oauth2/code/{provider}`.
 5. Backend generates JWT and redirects to frontend:
-   - `/auth/success?token=...&refreshToken=...&provider=GOOGLE`
+   - `/auth/success?token=...&refreshToken=...&provider=GOOGLE|FACEBOOK`
 6. Frontend callback page stores session and redirects to dashboard.
 
 Frontend files:
@@ -77,6 +92,10 @@ Frontend files:
 - Check backend domain/protocol in deployed URL.
 - Verify `server.forward-headers-strategy=framework` is active.
 - Open browser devtools and inspect `redirect_uri` query sent to Google.
+
+### A.1) Facebook `redirect_uri_mismatch`
+- Check Facebook redirect URI exact value in Meta dashboard.
+- Confirm callback is `/login/oauth2/code/facebook` with no extra trailing slash.
 
 ### B) `invalid_client` or `OAuth client was not found`
 - Verify `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Railway.
@@ -101,8 +120,9 @@ Swagger:
 
 Postman quick checks:
 1. `GET /api/v1/auth/oauth2/google` -> returns authorization URI metadata.
-2. Browser-only login start: `GET /oauth2/authorization/google`.
-3. After OAuth success, copy `token` from frontend callback URL and call protected endpoint:
+2. `GET /api/v1/auth/oauth2/facebook` -> returns authorization URI metadata.
+3. Browser-only login start: `GET /oauth2/authorization/google` or `GET /oauth2/authorization/facebook`.
+4. After OAuth success, copy `token` from frontend callback URL and call protected endpoint:
    - `GET /api/v1/users/...` with `Authorization: Bearer <token>`.
 
 ## 7) Local test commands
@@ -115,5 +135,6 @@ cd /Users/ppc/Desktop/ecommerce_app/demo_project_spring_boot
 
 Then test in browser:
 - `http://localhost:8080/oauth2/authorization/google`
-- `http://localhost:3000/login` (frontend Google button)
+- `http://localhost:8080/oauth2/authorization/facebook`
+- `http://localhost:3000/login` (frontend social login buttons)
 
