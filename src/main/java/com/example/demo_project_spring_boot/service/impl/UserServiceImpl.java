@@ -108,6 +108,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserProfileResponse getMyProfile(String username) {
         User user = userRepository.findByUsername(username)
+                .or(() -> userRepository.findByEmail(username))
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "រកមិនឃើញអ្នកប្រើប្រាស់: " + username));
         return mapToProfileResponse(user);
@@ -131,6 +132,7 @@ public class UserServiceImpl implements UserService {
     private UserProfileResponse mapToProfileResponse(User user) {
         List<AddressDto> addressDtos = user.getAddresses() != null
                 ? user.getAddresses().stream()
+                  .filter(addr -> addr != null)
                   .map(this::mapAddressToDto)
                   .collect(Collectors.toList())
                 : List.of();
@@ -138,7 +140,7 @@ public class UserServiceImpl implements UserService {
         return UserProfileResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
-                .role(user.getRole())
+                .role(user.getRole() != null ? user.getRole() : Role.USER)
                 .addresses(addressDtos)
                 .build();
     }
@@ -151,7 +153,7 @@ public class UserServiceImpl implements UserService {
                 .city(addr.getCity())
                 .district(addr.getDistrict())
                 .detailsAddress(addr.getDetailsAddress())
-                .userId(addr.getUser().getId())
+                .userId(addr.getUser() != null ? addr.getUser().getId() : null)
                 .build();
     }
 }

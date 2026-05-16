@@ -100,6 +100,9 @@ public class UserController {
     })
     @GetMapping("/profile")
     public ResponseEntity<UserProfileResponse> getProfile(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getName())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         UserProfileResponse response = userService.getMyProfile(authentication.getName());
         return ResponseEntity.ok(response);
     }
@@ -107,6 +110,9 @@ public class UserController {
     @Operation(summary = "Get current user (alias)", security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getMe(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getName())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         UserProfileResponse response = userService.getMyProfile(authentication.getName());
         return ResponseEntity.ok(response);
     }
