@@ -135,7 +135,8 @@ public class SecurityConfig {
                 // OAuth2 Authorization Endpoints
                 .requestMatchers(
                         "/oauth2/**",
-                        "/login/**"
+                        "/login/**",
+                        "/api/v1/auth/**"
                 ).permitAll()
 
                 // Public GET Routes (Products/Categories)
