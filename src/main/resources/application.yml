@@ -6,9 +6,9 @@ spring:
   # DATABASE CONFIGURATION
   # =========================================================
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://localhost:5432/postgres}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:postgres}}
     driver-class-name: org.postgresql.Driver
 
   # =========================================================
