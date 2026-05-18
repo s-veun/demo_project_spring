@@ -9,6 +9,7 @@ COPY gradle ./gradle
 COPY build.gradle settings.gradle gradle.properties ./
 
 RUN chmod +x gradlew
+RUN sed -i 's/\r$//' gradlew
 
 RUN ./gradlew --no-daemon --stacktrace help
 
@@ -20,16 +21,17 @@ FROM eclipse-temurin:21-jre-alpine AS runtime
 
 WORKDIR /app
 
+RUN apk add --no-cache wget
 RUN addgroup -S spring && adduser -S spring -G spring
 
-COPY --from=builder /workspace/build/libs/*.jar /app/app.jar
+COPY --from=builder /workspace/build/libs/app.jar /app/app.jar
 
 EXPOSE 8080
 
 ENV JAVA_OPTS=""
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=5 \
-  CMD wget -qO- http://127.0.0.1:8080/actuator/health | grep -q '"status":"UP"' || exit 1
+  CMD sh -c "wget -qO- \"http://127.0.0.1:${PORT:-8080}/actuator/health\" | grep -q '\"status\":\"UP\"'" || exit 1
 
 USER spring:spring
 
