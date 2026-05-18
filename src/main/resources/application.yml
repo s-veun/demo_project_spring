@@ -1,14 +1,16 @@
 spring:
   application:
     name: demo_project_spring_boot
+  config:
+    import: optional:file:.env[.properties],optional:file:./demo_project_spring_boot/.env[.properties]
 
   # =========================================================
   # DATABASE CONFIGURATION
   # =========================================================
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
 
   # =========================================================
