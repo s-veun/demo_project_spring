@@ -1,11 +1,12 @@
 package com.example.demo_project_spring_boot.controller;
 
-import com.example.demo_project_spring_boot.config.JwtService;
 import com.example.demo_project_spring_boot.dto.ChangePasswordRequest;
+import com.example.demo_project_spring_boot.dto.LoginResponse;
 import com.example.demo_project_spring_boot.dto.LoginRequest;
 import com.example.demo_project_spring_boot.dto.UserProfileResponse;
 import com.example.demo_project_spring_boot.dto.RegisterRequest;
 import com.example.demo_project_spring_boot.model.User;
+import com.example.demo_project_spring_boot.service.AuthenticationService;
 import com.example.demo_project_spring_boot.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -15,15 +16,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -32,10 +29,8 @@ import java.util.Map;
 @Tag(name = "User", description = "User Authentication & Profile APIs")
 public class UserController {
 
-    private final AuthenticationManager authenticationManager;
-    private final JwtService jwtService;
+    private final AuthenticationService authenticationService;
     private final UserService userService;
-    private final UserDetailsService userDetailsService;
 
     // ✅ ប្រើ RegisterRequest DTO ជំនួស User entity
     @Operation(summary = "Register new user")
@@ -68,20 +63,15 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
-            authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            request.getUsername(),
-                            request.getPassword()
-                    )
-            );
+            LoginResponse authResponse = authenticationService.loginUser(request);
 
-            UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
-            String jwtToken = jwtService.generateAccessToken(userDetails);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("token", jwtToken);
-            response.put("username", userDetails.getUsername());
-            response.put("roles", userDetails.getAuthorities());
+            Map<String, Object> response = new java.util.LinkedHashMap<>();
+            response.put("token", authResponse.getAccessToken());
+            response.put("accessToken", authResponse.getAccessToken());
+            response.put("refreshToken", authResponse.getRefreshToken());
+            response.put("tokenType", authResponse.getTokenType());
+            response.put("username", authResponse.getUsername());
+            response.put("roles", List.of(Map.of("authority", "ROLE_" + authResponse.getRole())));
             response.put("message", "User logged in successfully");
 
             return ResponseEntity.ok(response);

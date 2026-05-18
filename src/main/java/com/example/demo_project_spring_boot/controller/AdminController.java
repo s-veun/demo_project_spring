@@ -143,18 +143,30 @@ public class AdminController {
                         .body(Map.of("error", "Access denied. Admin only!"));
             }
 
-            String token = jwtService.generateAccessToken(userDetails);
+            Optional<User> adminOpt = userRepository.findByUsername(loginId)
+                    .or(() -> userRepository.findByEmail(loginId));
+            if (adminOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Admin account not found"));
+            }
+            User admin = adminOpt.get();
 
-            // Update last login time using username or email
-            userRepository.findByUsername(loginId)
-                    .or(() -> userRepository.findByEmail(loginId))
-                    .ifPresent(admin -> {
-                        admin.setLastLoginAt(java.time.LocalDateTime.now());
-                        userRepository.save(admin);
-                    });
+            String token = jwtService.generateAccessToken(userDetails);
+            String refreshToken = jwtService.generateRefreshToken(
+                    admin.getUsername(),
+                    admin.getId()
+            );
+
+            // Persist active session tokens so JWT filter can validate this login.
+            admin.setLastLoginAt(java.time.LocalDateTime.now());
+            admin.setAccessToken(token);
+            admin.setRefreshToken(refreshToken);
+            userRepository.save(admin);
 
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);
+            response.put("accessToken", token);
+            response.put("refreshToken", refreshToken);
             response.put("username", userDetails.getUsername());
             response.put("role", "ADMIN");
             response.put("message", "Admin logged in successfully");

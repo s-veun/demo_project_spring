@@ -23,14 +23,14 @@ primary_region = 'sin'
   [[http_service.checks]]
     interval = "15s"
     timeout = "5s"
-    grace_period = "4m"
+    grace_period = "1m"
     method = "GET"
     path = "/actuator/health/readiness"
 
   [[http_service.checks]]
     interval = "30s"
     timeout = "5s"
-    grace_period = "4m"
+    grace_period = "1m"
     method = "GET"
     path = "/actuator/health"
 
