@@ -11,11 +11,11 @@ COPY build.gradle settings.gradle gradle.properties ./
 RUN chmod +x gradlew
 RUN sed -i 's/\r$//' gradlew
 
-RUN ./gradlew --no-daemon --stacktrace help
+RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon --stacktrace help
 
 COPY src ./src
 
-RUN ./gradlew --no-daemon clean bootJar -x test
+RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon bootJar -x test
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
 
@@ -28,7 +28,7 @@ COPY --from=builder /workspace/build/libs/app.jar /app/app.jar
 
 EXPOSE 8080
 
-ENV JAVA_OPTS=""
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError -XX:+UseG1GC"
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=5 \
   CMD sh -c "wget -qO- \"http://127.0.0.1:${PORT:-8080}/actuator/health\" | grep -q '\"status\":\"UP\"'" || exit 1
