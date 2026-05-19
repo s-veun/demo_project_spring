@@ -20,6 +20,8 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Map;
 
@@ -170,22 +172,33 @@ public class AuthenticationController {
             @ApiResponse(responseCode = "400", description = "Invalid or expired refresh token"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<?> refreshToken(@RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<?> refreshToken(
+            @RequestBody(required = false) RefreshTokenRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            HttpServletRequest httpRequest
+    ) {
         try {
             log.info("Refresh token endpoint called");
 
-            if (request.getRefreshToken() == null || request.getRefreshToken().trim().isEmpty()) {
+            String resolvedRefreshToken = extractRefreshToken(request, authorizationHeader, httpRequest);
+            if (!StringUtils.hasText(resolvedRefreshToken)) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("success", false, "message", "Refresh token is required"));
             }
 
-            RefreshTokenResponse response = authenticationService.refreshToken(request);
+            RefreshTokenResponse response = authenticationService.refreshToken(
+                    RefreshTokenRequest.builder().refreshToken(resolvedRefreshToken).build()
+            );
             return ResponseEntity.ok(ApiResult.<RefreshTokenResponse>builder()
                     .success(true)
                     .message("Refresh access token successful")
                     .data(response)
                     .build());
 
+        } catch (BadRequestException e) {
+            log.warn("Token refresh bad request: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResult.builder().success(false).message(e.getMessage()).build());
         } catch (Exception e) {
             if (e instanceof UnauthorizedException) {
                 log.warn("Token refresh unauthorized: {}", e.getMessage());
@@ -264,6 +277,38 @@ public class AuthenticationController {
             return null;
         }
         return authHeader.substring(7).trim();
+    }
+
+    private String extractRefreshToken(
+            RefreshTokenRequest request,
+            String authorizationHeader,
+            HttpServletRequest httpRequest
+    ) {
+        if (request != null && StringUtils.hasText(request.getRefreshToken())) {
+            return request.getRefreshToken().trim();
+        }
+
+        String bearerToken = extractBearerToken(authorizationHeader);
+        if (StringUtils.hasText(bearerToken)) {
+            return bearerToken;
+        }
+
+        Cookie[] cookies = httpRequest.getCookies();
+        if (cookies == null || cookies.length == 0) {
+            return null;
+        }
+
+        for (Cookie cookie : cookies) {
+            if (cookie == null || !StringUtils.hasText(cookie.getName())) {
+                continue;
+            }
+            if ("refreshToken".equalsIgnoreCase(cookie.getName())
+                    || "te_refresh_token".equalsIgnoreCase(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+
+        return null;
     }
 }
 

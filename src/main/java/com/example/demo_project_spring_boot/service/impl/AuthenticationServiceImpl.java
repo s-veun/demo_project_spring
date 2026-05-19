@@ -176,6 +176,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         String username = jwtService.extractUsername(token);
+        if (!StringUtils.hasText(username)) {
+            throw new UnauthorizedException("Invalid refresh token subject");
+        }
+
         Long userId = jwtService.extractUserId(token);
 
         Optional<User> userOpt = userRepository.findByUsername(username);
@@ -194,18 +198,22 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 user.getEmail(),
                 user.getRole().name()
         );
+        String rotatedRefreshToken = jwtService.generateRefreshToken(user.getUsername(), user.getId());
         user.setAccessToken(newAccessToken);
+        user.setRefreshToken(rotatedRefreshToken);
         userRepository.save(user);
 
         log.info("Token refreshed successfully for user: {}", userId);
 
-        return RefreshTokenResponse.builder()
+        RefreshTokenResponse response = RefreshTokenResponse.builder()
                 .success(true)
                 .message("Token refreshed successfully")
                 .accessToken(newAccessToken)
                 .tokenType("Bearer")
                 .expiresIn(jwtService.getAccessTokenExpirationSeconds())
                 .build();
+        response.setRefreshToken(rotatedRefreshToken);
+        return response;
     }
 
     @Override

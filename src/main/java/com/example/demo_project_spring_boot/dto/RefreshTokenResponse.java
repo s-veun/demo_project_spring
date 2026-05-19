@@ -17,6 +17,7 @@ public class RefreshTokenResponse {
     private boolean success;
     private String message;
     private String accessToken;
+    private String refreshToken;
     @Builder.Default
     private String tokenType = "Bearer";
     private Long expiresIn; // in seconds

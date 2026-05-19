@@ -28,6 +28,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
@@ -218,7 +219,14 @@ public class SecurityConfig {
                 .filter(value -> !value.contains("*"))
                 .toList();
 
-        config.setAllowedOrigins(exactOrigins);
+        // Keep local admin/user frontends working without requiring wildcard CORS.
+        LinkedHashSet<String> exactOriginSet = new LinkedHashSet<>(exactOrigins);
+        exactOriginSet.add("http://localhost:3000");
+        exactOriginSet.add("http://localhost:3001");
+        exactOriginSet.add("http://127.0.0.1:3000");
+        exactOriginSet.add("http://127.0.0.1:3001");
+
+        config.setAllowedOrigins(List.copyOf(exactOriginSet));
         config.setAllowedOriginPatterns(wildcardOrigins);
 
         // Allow all methods
