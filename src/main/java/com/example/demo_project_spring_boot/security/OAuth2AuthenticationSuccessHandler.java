@@ -59,7 +59,9 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             User user = resolveAuthenticatedUser(appUserId, provider, providerId, email, fullName, picture);
 
             user.setLastLoginAt(LocalDateTime.now());
-            user.setRole(Role.USER);
+            if (user.getRole() == null) {
+                user.setRole(Role.USER);
+            }
             String accessToken = jwtService.generateAccessToken(
                     user.getId(),
                     user.getUsername(),
@@ -143,8 +145,9 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         user.setProvider(provider);
         user.setProviderId(providerId);
         user.setIsOAuth2Linked(true);
-        // OAuth2 fallback path must never grant admin role.
-        user.setRole(Role.USER);
+        if (user.getRole() == null) {
+            user.setRole(Role.USER);
+        }
         user.setProfileImageUrl(picture);
 
         if (StringUtils.hasText(fullName)) {

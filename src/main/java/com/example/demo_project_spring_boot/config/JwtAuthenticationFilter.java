@@ -1,6 +1,8 @@
 package com.example.demo_project_spring_boot.config;
 
 import com.example.demo_project_spring_boot.repository.UserRepository;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,12 +27,13 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    public static final String AUTH_FAILURE_REASON_ATTR = "auth.failure.reason";
+
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
     private static final List<String> SKIP_PATHS = List.of(
             "/api/v1/auth/**",
             "/oauth2/**",
             "/login/**",
-            "/actuator/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**"
@@ -64,12 +67,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 1. No Authorization header
         if (authHeader == null || authHeader.isBlank()) {
+            request.setAttribute(AUTH_FAILURE_REASON_ATTR, "Authorization header is missing");
             filterChain.doFilter(request, response);
             return;
         }
 
         // 2. Authorization header exists but not Bearer token
         if (!authHeader.startsWith("Bearer ")) {
+            request.setAttribute(AUTH_FAILURE_REASON_ATTR, "Authorization header must use Bearer token");
             filterChain.doFilter(request, response);
             return;
         }
@@ -79,6 +84,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 4. Empty token
         if (jwt.isBlank()) {
+            request.setAttribute(AUTH_FAILURE_REASON_ATTR, "Bearer token is empty");
             filterChain.doFilter(request, response);
             return;
         }
@@ -112,12 +118,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
 
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                } else {
+                    request.setAttribute(AUTH_FAILURE_REASON_ATTR, "JWT token is invalid, expired, or revoked");
                 }
             }
 
+        } catch (ExpiredJwtException ex) {
+            request.setAttribute(AUTH_FAILURE_REASON_ATTR, "JWT token is expired");
+            SecurityContextHolder.clearContext();
+        } catch (JwtException ex) {
+            request.setAttribute(AUTH_FAILURE_REASON_ATTR, "JWT token is malformed or signature is invalid");
+            SecurityContextHolder.clearContext();
         } catch (Exception ex) {
-            // Invalid / malformed / expired JWT
-            // Ignore token and continue request without authentication
+            request.setAttribute(AUTH_FAILURE_REASON_ATTR, "JWT token could not be validated");
             SecurityContextHolder.clearContext();
         }
 

@@ -1,5 +1,6 @@
 package com.example.demo_project_spring_boot.security;
 
+import com.example.demo_project_spring_boot.config.JwtAuthenticationFilter;
 import com.example.demo_project_spring_boot.exception.ApiErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,12 +26,18 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
 
         response.setContentType("application/json");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setHeader("WWW-Authenticate", "Bearer");
+
+        Object reason = request.getAttribute(JwtAuthenticationFilter.AUTH_FAILURE_REASON_ATTR);
+        String message = reason instanceof String && !((String) reason).isBlank()
+                ? (String) reason
+                : (authException.getMessage() != null ? authException.getMessage() : "Authentication required");
 
         ApiErrorResponse errorResponse = ApiErrorResponse.builder()
                 .timestamp(OffsetDateTime.now(ZoneOffset.UTC).toString())
                 .status(HttpServletResponse.SC_UNAUTHORIZED)
                 .error("Unauthorized")
-                .message(authException.getMessage() != null ? authException.getMessage() : "Authentication required")
+                .message(message)
                 .path(request.getRequestURI())
                 .build();
 

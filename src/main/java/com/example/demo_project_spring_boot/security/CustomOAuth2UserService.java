@@ -6,6 +6,7 @@ import com.example.demo_project_spring_boot.model.User;
 import com.example.demo_project_spring_boot.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -25,7 +26,6 @@ import java.util.Optional;
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     public static final String USER_ID_ATTRIBUTE = "app_user_id";
-    private static final String DEFAULT_ROLE = "ROLE_USER";
 
     private final UserRepository userRepository;
 
@@ -65,7 +65,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         log.info("Loaded OAuth2 user email={} provider={} appUserId={}", user.getEmail(), provider, user.getId());
 
         return new DefaultOAuth2User(
-                List.of(() -> DEFAULT_ROLE),
+                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())),
                 normalizedAttributes,
                 resolvePrincipalNameAttribute(provider)
         );
@@ -96,8 +96,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setProvider(provider);
         user.setProviderId(providerId);
         user.setIsOAuth2Linked(true);
-        // Social logins are always least-privilege by default.
-        user.setRole(Role.USER);
+        if (user.getRole() == null) {
+            user.setRole(Role.USER);
+        }
         user.setFirstName(firstName);
         user.setLastName(lastName);
         user.setProfileImageUrl(profileImage);

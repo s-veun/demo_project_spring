@@ -119,7 +119,10 @@ public class SecurityConfig {
                         "/webjars/**"
                 ).permitAll()
 
-                // Public Authentication Routes (password + social + refresh/logout orchestration)
+                // Logout requires an authenticated principal/session token.
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
+
+                // Public Authentication Routes (password + social + refresh)
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST,
                         "/api/v1/admin/login"
@@ -142,7 +145,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,
                         "/api/v1/products/**",
                         "/api/v1/categories/**",
-                        "/api/v1/reviews/**"
+                        "/api/v1/reviews/**",
+                        "/api/v1/search/**",
+                        "/api/v1/auth/**"
+
                 ).permitAll()
 
                 // Static file uploads
@@ -156,15 +162,17 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/v1/popularity/update-all-scores").hasRole("ADMIN")
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
-                // Authenticated User Routes
-                .requestMatchers(HttpMethod.GET,
-                        "/api/v1/user/**",
-                        "/api/v1/profile/**"
-                ).hasAnyRole("USER", "ADMIN")
-                .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").hasAnyRole("USER", "ADMIN")
+                // USER-only routes
+                .requestMatchers("/api/v1/user/**").hasRole("USER")
+                .requestMatchers("/api/v1/popularity/user/**").hasRole("USER")
+                .requestMatchers(HttpMethod.GET, "/api/v1/profile/**", "/api/v1/me").hasRole("USER")
+
+                // Public popularity analytics endpoints (excluding user-scoped and admin update route)
+                .requestMatchers(HttpMethod.GET, "/api/v1/popularity/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/popularity/view/**").permitAll()
 
                 // Any other request requires authentication
                 .anyRequest().authenticated()
