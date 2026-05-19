@@ -164,6 +164,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/v1/popularity/update-all-scores").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/v1/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
                 // USER-only routes
