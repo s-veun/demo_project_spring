@@ -14,13 +14,14 @@ import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
 @Configuration
 public class OpenAPIConfig {
 
-    @Value("${app.api.url:https://api.example.com}")
+    @Value("${app.api.url:}")
     private String apiUrl;
 
     // ✅ លុប static block SpringDocUtils.replaceWithClass ចេញទាំងស្រុង
@@ -54,27 +55,14 @@ public class OpenAPIConfig {
                         ._default("uploads")
                         .description("Folder គោលដៅ (ស្រេចចិត្ត)"));
 
+        List<Server> servers = buildServers();
+
         return new OpenAPI()
                 .info(new Info()
                         .title("E-Commerce API")
                         .version("1.0.0")
                         .description("""
-                                ## 🚀 Complete E-Commerce REST API
-                                
-                                **សមត្ថភាពសំខាន់ៗ:**
-                                - Social Authentication APIs (Google OAuth2)
-                                - JWT Access + Refresh Token Authentication
-                                - Product Management with Cloudinary
-                                - Shopping Cart & Orders
-                                - Reviews & Ratings
-                                - Wishlist & Popularity Tracking
-                                
-                                **របៀបប្រើប្រាស់ Authentication:**
-                                1. Start social login via `GET /api/v1/auth/oauth2/google`
-                                2. Complete OAuth2 consent screen
-                                3. Receive `accessToken` and `refreshToken`
-                                4. Use `POST /api/v1/auth/refresh-token` for token renewal
-                                5. Call protected APIs with `Bearer <access-token>`
+                                ## Complete E-Commerce REST API
                                 """)
                         .contact(new Contact()
                                 .name("API Support")
@@ -82,10 +70,7 @@ public class OpenAPIConfig {
                         .license(new License()
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0.html")))
-                .servers(List.of(
-                        new Server()
-                                .url(apiUrl)
-                                .description("Primary API Server")))
+                .servers(servers)
                 .addSecurityItem(new SecurityRequirement()
                         .addList(securitySchemeName))
                 .components(new Components()
@@ -99,4 +84,27 @@ public class OpenAPIConfig {
                                         .bearerFormat("JWT")
                                         .description("សូមបញ្ចូលតែ Token (មិនបាច់ថែមពាក្យ Bearer ពីមុខទេ)")));
     }
+
+    private List<Server> buildServers() {
+        Server sameOriginServer = new Server()
+                .url("/")
+                .description("Current host (recommended for Swagger Try it out)");
+
+        if (!StringUtils.hasText(apiUrl)) {
+            return List.of(sameOriginServer);
+        }
+
+        String normalizedApiUrl = apiUrl.trim();
+        if ("/".equals(normalizedApiUrl)) {
+            return List.of(sameOriginServer);
+        }
+
+        return List.of(
+                sameOriginServer,
+                new Server()
+                        .url(normalizedApiUrl)
+                        .description("Primary API Server")
+        );
+    }
 }
+
