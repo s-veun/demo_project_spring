@@ -93,6 +93,9 @@ logging:
     root: ${LOG_LEVEL_ROOT:INFO}
     org.springframework.security: ${LOG_LEVEL_SPRING_SECURITY:INFO}
     org.springframework.security.oauth2: ${LOG_LEVEL_SPRING_SECURITY_OAUTH2:INFO}
+    # Set LOG_LEVEL_JWT=DEBUG on Railway to trace JWT authentication issues
+    com.example.demo_project_spring_boot.config.JwtAuthenticationFilter: ${LOG_LEVEL_JWT:DEBUG}
+    com.example.demo_project_spring_boot.controller.CartController: ${LOG_LEVEL_CART:DEBUG}
 
 app:
   security:

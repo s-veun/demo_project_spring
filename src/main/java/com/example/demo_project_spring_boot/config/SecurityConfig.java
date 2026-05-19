@@ -165,6 +165,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/popularity/update-all-scores").hasRole("ADMIN")
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
+                // Cart Routes – accessible by both USER and ADMIN (ownership enforced in CartController)
+                .requestMatchers("/api/v1/cart/**").authenticated()
+
                 // USER-only routes
                 .requestMatchers("/api/v1/user/**").hasRole("USER")
                 .requestMatchers("/api/v1/popularity/user/**").hasRole("USER")
