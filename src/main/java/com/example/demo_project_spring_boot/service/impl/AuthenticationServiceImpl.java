@@ -161,7 +161,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
         log.info("Attempting to refresh token");
 
-        String token = request.getRefreshToken();
+        String token = request.getRefreshToken() == null ? null : request.getRefreshToken().trim();
         if (!StringUtils.hasText(token)) {
             throw new BadRequestException("Refresh token is required");
         }
@@ -182,7 +182,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         Long userId = jwtService.extractUserId(token);
 
-        Optional<User> userOpt = userRepository.findByUsername(username);
+        Optional<User> userOpt = Optional.empty();
+        if (userId != null) {
+            userOpt = userRepository.findById(userId)
+                    .filter(user -> username.equals(user.getUsername()));
+        }
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByUsername(username)
+                    .or(() -> userRepository.findByEmail(username));
+        }
         if (userOpt.isEmpty()) {
             throw new UnauthorizedException("User not found");
         }
@@ -192,11 +200,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new UnauthorizedException("Refresh token is revoked or does not match active session");
         }
 
+        Role effectiveRole = user.getRole() == null ? Role.USER : user.getRole();
+
         String newAccessToken = jwtService.generateAccessToken(
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
-                user.getRole().name()
+                effectiveRole.name()
         );
         String rotatedRefreshToken = jwtService.generateRefreshToken(user.getUsername(), user.getId());
         user.setAccessToken(newAccessToken);

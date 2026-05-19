@@ -40,6 +40,9 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     @Autowired
     private OAuth2RedirectUriResolver redirectUriResolver;
 
+    @Autowired
+    private TokenCookieService tokenCookieService;
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                        Authentication authentication) throws IOException {
@@ -73,6 +76,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             user.setAccessToken(accessToken);
             user.setRefreshToken(refreshToken);
             userRepository.save(user);
+            tokenCookieService.writeRefreshTokenCookie(response, refreshToken, jwtService.getRefreshTokenExpirationSeconds());
 
             String frontendRedirectUri = redirectUriResolver.resolve(request);
 

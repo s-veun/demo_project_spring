@@ -13,6 +13,7 @@ import com.example.demo_project_spring_boot.model.User;
 import com.example.demo_project_spring_boot.repository.OrderRepository;
 import com.example.demo_project_spring_boot.repository.ProductReposity;
 import com.example.demo_project_spring_boot.repository.UserRepository;
+import com.example.demo_project_spring_boot.security.TokenCookieService;
 import com.example.demo_project_spring_boot.service.AdminProfileService;
 import com.example.demo_project_spring_boot.service.OrderService;
 import com.example.demo_project_spring_boot.service.ProductService;
@@ -44,6 +45,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -70,6 +72,7 @@ public class AdminController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final TokenCookieService tokenCookieService;
 
     // ✅ ១. Admin Register — Public
     @PostMapping("/register")
@@ -116,7 +119,7 @@ public class AdminController {
     // ✅ ២. Admin Login — Public
     @PostMapping("/login")
     @Operation(summary = "Admin login — returns JWT token")
-    public ResponseEntity<?> loginAdmin(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> loginAdmin(@RequestBody LoginRequest request, HttpServletResponse httpResponse) {
         try {
             if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
                 return ResponseEntity.badRequest()
@@ -162,6 +165,12 @@ public class AdminController {
             admin.setAccessToken(token);
             admin.setRefreshToken(refreshToken);
             userRepository.save(admin);
+
+            tokenCookieService.writeRefreshTokenCookie(
+                    httpResponse,
+                    refreshToken,
+                    jwtService.getRefreshTokenExpirationSeconds()
+            );
 
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);

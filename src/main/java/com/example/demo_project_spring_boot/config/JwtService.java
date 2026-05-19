@@ -70,10 +70,21 @@ public class JwtService {
     public Long extractUserId(String token) {
         return extractClaim(token, claims -> {
             Object userId = claims.get("userId");
+            if (userId == null) {
+                return null;
+            }
             if (userId instanceof Number) {
                 return ((Number) userId).longValue();
             }
-            return Long.parseLong(userId.toString());
+            String normalized = userId.toString().trim();
+            if (normalized.isEmpty()) {
+                return null;
+            }
+            try {
+                return Long.parseLong(normalized);
+            } catch (NumberFormatException ex) {
+                return null;
+            }
         });
     }
 

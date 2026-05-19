@@ -126,7 +126,8 @@ public class SecurityConfig {
                 // Public Authentication Routes (password + social + refresh)
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST,
-                        "/api/v1/admin/login"
+                        "/api/v1/admin/login",
+                        "/api/v1/admin/register"
                 ).permitAll()
 
                 // Legacy UserController Auth Endpoints (deprecated - use /api/v1/auth/** instead)
@@ -138,8 +139,7 @@ public class SecurityConfig {
                 // OAuth2 Authorization Endpoints
                 .requestMatchers(
                         "/oauth2/**",
-                        "/login/**",
-                        "/api/v1/auth/**"
+                        "/login/**"
                 ).permitAll()
 
                 // Public GET Routes (Products/Categories)
@@ -147,8 +147,7 @@ public class SecurityConfig {
                         "/api/v1/products/**",
                         "/api/v1/categories/**",
                         "/api/v1/reviews/**",
-                        "/api/v1/search/**",
-                        "/api/v1/auth/**"
+                        "/api/v1/search/**"
 
                 ).permitAll()
 
@@ -164,7 +163,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/v1/popularity/update-all-scores").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.GET, "/api/v1/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
                 // USER-only routes
@@ -233,14 +231,22 @@ public class SecurityConfig {
         // Allow all methods
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
-        // Allow commonly used headers only
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
+        // Allow commonly used headers, including credential-related browser headers.
+        config.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Origin",
+                "X-Requested-With",
+                "Cookie",
+                "Set-Cookie"
+        ));
 
-        // Expose Authorization header to frontend
-        config.setExposedHeaders(List.of("Authorization", "Content-Type"));
+        // Expose auth headers for clients that inspect tokens/cookies.
+        config.setExposedHeaders(List.of("Authorization", "Content-Type", "Set-Cookie"));
 
-        // Browsers reject wildcard origins when credentials=true, so keep credentials off for wildcard mode.
-        config.setAllowCredentials(wildcardOrigins.isEmpty());
+        // Required for refresh-token cookie flows used by browser frontends.
+        config.setAllowCredentials(true);
 
         // Cache CORS for 1 hour
         config.setMaxAge(3600L);

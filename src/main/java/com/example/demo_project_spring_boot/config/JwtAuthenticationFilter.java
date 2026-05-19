@@ -5,6 +5,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
     private static final List<String> SKIP_PATHS = List.of(
             "/api/v1/auth/**",
+            "/api/v1/admin/login",
+            "/api/v1/admin/register",
             "/oauth2/**",
             "/login/**",
             "/swagger-ui/**",
@@ -63,37 +66,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
+        final String jwt = extractAccessToken(request);
 
-        // 1. No Authorization header
-        if (authHeader == null || authHeader.isBlank()) {
-            request.setAttribute(AUTH_FAILURE_REASON_ATTR, "Authorization header is missing");
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // 2. Authorization header exists but not Bearer token
-        if (!authHeader.startsWith("Bearer ")) {
-            request.setAttribute(AUTH_FAILURE_REASON_ATTR, "Authorization header must use Bearer token");
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // 3. Extract token
-        final String jwt = authHeader.substring(7).trim();
-
-        // 4. Empty token
-        if (jwt.isBlank()) {
-            request.setAttribute(AUTH_FAILURE_REASON_ATTR, "Bearer token is empty");
+        if (!StringUtils.hasText(jwt)) {
+            request.setAttribute(AUTH_FAILURE_REASON_ATTR, "Access token is missing");
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
-            // 5. Extract username safely
             final String username = jwtService.extractUsername(jwt);
 
-            // 6. Authenticate only if not already authenticated
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
@@ -101,23 +84,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .map(com.example.demo_project_spring_boot.model.User::getAccessToken)
                         .orElse(null);
 
-                // 7. Validate token
                 if (jwtService.isTokenValid(jwt, userDetails)
                         && jwtService.isAccessToken(jwt)
-                        && Objects.equals(jwt, activeAccessToken)) {
+                        && (activeAccessToken == null || activeAccessToken.isBlank() || Objects.equals(jwt, activeAccessToken))) {
 
-                    UsernamePasswordAuthenticationToken authToken =
+                    UsernamePasswordAuthenticationToken authenticationToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
                                     null,
                                     userDetails.getAuthorities()
                             );
 
-                    authToken.setDetails(
+                    authenticationToken.setDetails(
                             new WebAuthenticationDetailsSource().buildDetails(request)
                     );
 
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    SecurityContextHolder.getContext()
+                            .setAuthentication(authenticationToken);
                 } else {
                     request.setAttribute(AUTH_FAILURE_REASON_ATTR, "JWT token is invalid, expired, or revoked");
                 }
@@ -134,7 +117,40 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.clearContext();
         }
 
-        // 8. Continue filter chain
         filterChain.doFilter(request, response);
+    }
+
+    private String extractAccessToken(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (StringUtils.hasText(authHeader)) {
+            if (!authHeader.startsWith("Bearer ")) {
+                return null;
+            }
+            String bearerToken = authHeader.substring(7).trim();
+            if (!bearerToken.isBlank()) {
+                return bearerToken;
+            }
+        }
+
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null || cookies.length == 0) {
+            return null;
+        }
+
+        for (Cookie cookie : cookies) {
+            if (cookie == null || cookie.getName() == null) {
+                continue;
+            }
+            if ("accessToken".equalsIgnoreCase(cookie.getName())
+                    || "te_access_token".equalsIgnoreCase(cookie.getName())
+                    || "admin_access_token".equalsIgnoreCase(cookie.getName())) {
+                String value = cookie.getValue();
+                if (StringUtils.hasText(value)) {
+                    return value.trim();
+                }
+            }
+        }
+
+        return null;
     }
 }

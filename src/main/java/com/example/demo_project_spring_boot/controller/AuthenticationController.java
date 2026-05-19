@@ -4,6 +4,8 @@ import com.example.demo_project_spring_boot.dto.*;
 import com.example.demo_project_spring_boot.exception.BadRequestException;
 import com.example.demo_project_spring_boot.exception.DuplicateResourceException;
 import com.example.demo_project_spring_boot.exception.UnauthorizedException;
+import com.example.demo_project_spring_boot.config.JwtService;
+import com.example.demo_project_spring_boot.security.TokenCookieService;
 import com.example.demo_project_spring_boot.service.AuthenticationService;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +24,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.Map;
 
@@ -38,6 +41,8 @@ import java.util.Map;
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
+    private final TokenCookieService tokenCookieService;
+    private final JwtService jwtService;
 
     /**
      * Register new user with email and password
@@ -108,7 +113,7 @@ public class AuthenticationController {
             @ApiResponse(responseCode = "401", description = "Unauthorized - invalid credentials"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<?> loginUser(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> loginUser(@RequestBody LoginRequest request, HttpServletResponse httpResponse) {
         try {
             log.info("Login endpoint called for user: {}", request.getUsername());
 
@@ -124,6 +129,11 @@ public class AuthenticationController {
             }
 
             LoginResponse response = authenticationService.loginUser(request);
+            tokenCookieService.writeRefreshTokenCookie(
+                    httpResponse,
+                    response.getRefreshToken(),
+                    jwtService.getRefreshTokenExpirationSeconds()
+            );
             return ResponseEntity.ok(response);
 
         } catch (BadCredentialsException e) {
@@ -175,7 +185,8 @@ public class AuthenticationController {
     public ResponseEntity<?> refreshToken(
             @RequestBody(required = false) RefreshTokenRequest request,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
-            HttpServletRequest httpRequest
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
         try {
             log.info("Refresh token endpoint called");
@@ -188,6 +199,11 @@ public class AuthenticationController {
 
             RefreshTokenResponse response = authenticationService.refreshToken(
                     RefreshTokenRequest.builder().refreshToken(resolvedRefreshToken).build()
+            );
+            tokenCookieService.writeRefreshTokenCookie(
+                    httpResponse,
+                    response.getRefreshToken(),
+                    jwtService.getRefreshTokenExpirationSeconds()
             );
             return ResponseEntity.ok(ApiResult.<RefreshTokenResponse>builder()
                     .success(true)
@@ -225,7 +241,8 @@ public class AuthenticationController {
     public ResponseEntity<?> logoutUser(
             @RequestBody(required = false) LogoutRequest request,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
-            Authentication authentication
+            Authentication authentication,
+            HttpServletResponse httpResponse
     ) {
         try {
             String accessToken = extractBearerToken(authorizationHeader);
@@ -235,6 +252,8 @@ public class AuthenticationController {
             if (authentication != null && authentication.isAuthenticated()) {
                 authenticationService.logoutUser(authentication.getName());
             }
+
+            tokenCookieService.clearRefreshTokenCookie(httpResponse);
 
             log.info("User logout completed");
 
@@ -246,6 +265,7 @@ public class AuthenticationController {
                     .body(ApiResult.builder().success(false).message("Logout failed").build());
         }
     }
+
 
     /**
      * Google OAuth2 Login endpoint (informational)
