@@ -58,13 +58,6 @@ public class OAuth2ClientConfig {
             log.warn("GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set. Google login is disabled.");
         }
 
-        if (StringUtils.hasText(facebookClientId) && StringUtils.hasText(facebookClientSecret)) {
-            registrations.add(buildFacebookRegistration());
-            log.info("Facebook OAuth2 client registered.");
-        } else {
-            log.warn("FACEBOOK_APP_ID / FACEBOOK_APP_SECRET not set. Facebook login is disabled.");
-        }
-
         if (registrations.isEmpty()) {
             log.warn("No OAuth2 providers configured. Social login is disabled.");
             // Return a no-op repo so SecurityConfig can still call oauth2Login() safely.

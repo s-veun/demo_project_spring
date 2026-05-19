@@ -20,23 +20,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
-/**
- * JWT Service for generating and validating JWT tokens
- * Supports both Access Token and Refresh Token generation
- */
 @Service
 public class JwtService {
 
     @Value("${app.jwt.secret}")
     private String jwtSecret;
-
-    /**
-     * Supported values: plain, base64, base64url, auto
-     * - plain: raw UTF-8 secret bytes
-     * - base64: RFC4648 Base64 secret bytes
-     * - base64url: URL-safe Base64 secret bytes
-     * - auto: detect format using safe heuristics
-     */
     @Value("${app.jwt.secret-format:auto}")
     private String secretFormat;
 
