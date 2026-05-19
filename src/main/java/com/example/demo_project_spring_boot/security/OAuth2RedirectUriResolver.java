@@ -16,7 +16,7 @@ public class OAuth2RedirectUriResolver {
 
     private static final String FRONTEND_REDIRECT_PARAM = "frontend_redirect_uri";
 
-    @Value("${app.frontend-url:http://localhost:3000}")
+    @Value("${app.frontend-url:https://your-frontend-domain.com}")
     private String frontendUrl;
 
     @Value("${app.oauth2.authorized-redirect-uri:}")
@@ -85,7 +85,7 @@ public class OAuth2RedirectUriResolver {
 
     private String normalizeBaseUrl(String raw) {
         if (!StringUtils.hasText(raw)) {
-            return "http://localhost:3000";
+            return "https://your-frontend-domain.com";
         }
         return raw.endsWith("/") ? raw.substring(0, raw.length() - 1) : raw;
     }

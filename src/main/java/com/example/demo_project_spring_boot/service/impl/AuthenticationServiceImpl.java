@@ -3,6 +3,9 @@ package com.example.demo_project_spring_boot.service.impl;
 import com.example.demo_project_spring_boot.config.JwtService;
 import com.example.demo_project_spring_boot.dto.*;
 import com.example.demo_project_spring_boot.Enum.AuthProvider;
+import com.example.demo_project_spring_boot.exception.BadRequestException;
+import com.example.demo_project_spring_boot.exception.DuplicateResourceException;
+import com.example.demo_project_spring_boot.exception.UnauthorizedException;
 import com.example.demo_project_spring_boot.model.User;
 import com.example.demo_project_spring_boot.repository.UserRepository;
 import com.example.demo_project_spring_boot.service.AuthenticationService;
@@ -15,6 +18,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -41,13 +45,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         // Check if user already exists
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             log.warn("User already exists: {}", request.getUsername());
-            throw new IllegalArgumentException("Username already registered");
+            throw new DuplicateResourceException("Username already registered");
         }
 
         // Check if email already exists
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             log.warn("Email already registered: {}", request.getEmail());
-            throw new IllegalArgumentException("Email already registered");
+            throw new DuplicateResourceException("Email already registered");
         }
 
         // Create new user
@@ -92,7 +96,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             Optional<User> userOpt = userRepository.findByUsername(loginId)
                     .or(() -> userRepository.findByEmail(loginId));
             if (userOpt.isEmpty()) {
-                throw new IllegalArgumentException("User not found");
+                throw new UnauthorizedException("Invalid username or password");
             }
 
             User user = userOpt.get();
@@ -100,7 +104,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             // Check if user is enabled
             if (!user.getIsEnabled()) {
                 log.warn("Disabled user attempted to login: {}", user.getId());
-                throw new IllegalArgumentException("Account is disabled");
+                throw new UnauthorizedException("Account is disabled");
             }
 
             // Update last login time
@@ -135,18 +139,21 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     .lastName(user.getLastName())
                     .profileImageUrl(user.getProfileImageUrl())
                     .role(user.getRole().name())
-                    .expiresIn(86400L) // 24 hours in seconds
+                    .expiresIn(jwtService.getAccessTokenExpirationSeconds())
                     .build();
 
         } catch (BadCredentialsException e) {
             log.warn("Invalid credentials for user: {}", request.getUsername());
-            throw new BadCredentialsException("Invalid username or password");
-        } catch (IllegalArgumentException e) {
+            throw new UnauthorizedException("Invalid username or password");
+        } catch (UnauthorizedException e) {
             log.warn("Login rejected for user {}: {}", request.getUsername(), e.getMessage());
             throw e;
-        } catch (Exception e) {
+        } catch (IllegalStateException e) {
             log.error("Error during login", e);
-            throw new RuntimeException("Login failed due to server error", e);
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error during login", e);
+            throw new BadRequestException("Login failed");
         }
     }
 
@@ -154,54 +161,51 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
         log.info("Attempting to refresh token");
 
-        try {
-            String token = request.getRefreshToken();
-            if (!jwtService.isRefreshToken(token)) {
-                throw new IllegalArgumentException("Invalid token type");
-            }
-
-            if (jwtService.isTokenExpired(token)) {
-                log.warn("Refresh token is expired");
-                throw new IllegalArgumentException("Refresh token is expired");
-            }
-
-            String username = jwtService.extractUsername(token);
-            Long userId = jwtService.extractUserId(token);
-
-            Optional<User> userOpt = userRepository.findByUsername(username);
-            if (userOpt.isEmpty()) {
-                throw new IllegalArgumentException("User not found");
-            }
-
-            User user = userOpt.get();
-            if (user.getRefreshToken() == null || !user.getRefreshToken().equals(token)) {
-                throw new IllegalArgumentException("Refresh token is revoked or does not match active session");
-            }
-
-            // Generate new access token
-            String newAccessToken = jwtService.generateAccessToken(
-                    user.getId(),
-                    user.getUsername(),
-                    user.getEmail(),
-                    user.getRole().name()
-            );
-            user.setAccessToken(newAccessToken);
-            userRepository.save(user);
-
-            log.info("Token refreshed successfully for user: {}", userId);
-
-            return RefreshTokenResponse.builder()
-                    .success(true)
-                    .message("Token refreshed successfully")
-                    .accessToken(newAccessToken)
-                    .tokenType("Bearer")
-                    .expiresIn(86400L) // 24 hours in seconds
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Error during token refresh", e);
-            throw new RuntimeException("Token refresh failed: " + e.getMessage());
+        String token = request.getRefreshToken();
+        if (!StringUtils.hasText(token)) {
+            throw new BadRequestException("Refresh token is required");
         }
+
+        if (!jwtService.isRefreshToken(token)) {
+            throw new BadRequestException("Invalid token type");
+        }
+
+        if (jwtService.isTokenExpired(token)) {
+            log.warn("Refresh token is expired");
+            throw new UnauthorizedException("Refresh token is expired");
+        }
+
+        String username = jwtService.extractUsername(token);
+        Long userId = jwtService.extractUserId(token);
+
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isEmpty()) {
+            throw new UnauthorizedException("User not found");
+        }
+
+        User user = userOpt.get();
+        if (!token.equals(user.getRefreshToken())) {
+            throw new UnauthorizedException("Refresh token is revoked or does not match active session");
+        }
+
+        String newAccessToken = jwtService.generateAccessToken(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getRole().name()
+        );
+        user.setAccessToken(newAccessToken);
+        userRepository.save(user);
+
+        log.info("Token refreshed successfully for user: {}", userId);
+
+        return RefreshTokenResponse.builder()
+                .success(true)
+                .message("Token refreshed successfully")
+                .accessToken(newAccessToken)
+                .tokenType("Bearer")
+                .expiresIn(jwtService.getAccessTokenExpirationSeconds())
+                .build();
     }
 
     @Override

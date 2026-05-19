@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "java -jar build/libs/*.jar",
+    "startCommand": "java $JAVA_OPTS -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-railway} -Dserver.port=${PORT:-8080} -jar build/libs/app.jar",
     "healthcheckPath": "/actuator/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",

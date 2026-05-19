@@ -40,5 +40,15 @@ out/
 .env
 .env.railway
 .env.local
-.env.production
+.env.*.local
 application-local.properties
+
+### Runtime artifacts ###
+uploads/
+logs/
+*.log
+
+### OS files ###
+.DS_Store
+
+

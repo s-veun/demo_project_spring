@@ -66,7 +66,7 @@ public class SecurityConfig {
     @Autowired
     private OAuth2ClientConfig oauth2ClientConfig;
 
-    @Value("${app.cors.allowed-origins:http://localhost:3000}")
+    @Value("${app.cors.allowed-origins:https://your-frontend-domain.com}")
     private String allowedOrigins;
 
     @Bean
@@ -148,8 +148,9 @@ public class SecurityConfig {
                 // Static file uploads
                 .requestMatchers("/uploads/**").permitAll()
 
-                // Actuator Health Check
-                .requestMatchers("/actuator/**", "/actuator/health").permitAll()
+                // Public health/info endpoints only
+                .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/**").hasRole("ADMIN")
 
                 // ADMIN Role Routes
                 .requestMatchers(HttpMethod.POST, "/api/v1/products/**", "/api/v1/categories/**").hasRole("ADMIN")
@@ -196,22 +197,33 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOriginPatterns(Arrays.stream(allowedOrigins.split(","))
+        List<String> configuredOrigins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
-                .toList());
+                .toList();
+
+        List<String> wildcardOrigins = configuredOrigins.stream()
+                .filter(value -> value.contains("*"))
+                .toList();
+
+        List<String> exactOrigins = configuredOrigins.stream()
+                .filter(value -> !value.contains("*"))
+                .toList();
+
+        config.setAllowedOrigins(exactOrigins);
+        config.setAllowedOriginPatterns(wildcardOrigins);
 
         // Allow all methods
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
-        // Allow all headers
-        config.setAllowedHeaders(List.of("*"));
+        // Allow commonly used headers only
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
 
         // Expose Authorization header to frontend
         config.setExposedHeaders(List.of("Authorization", "Content-Type"));
 
-        // Allow credentials (cookies, authorization headers, etc.)
-        config.setAllowCredentials(true);
+        // Browsers reject wildcard origins when credentials=true, so keep credentials off for wildcard mode.
+        config.setAllowCredentials(wildcardOrigins.isEmpty());
 
         // Cache CORS for 1 hour
         config.setMaxAge(3600L);

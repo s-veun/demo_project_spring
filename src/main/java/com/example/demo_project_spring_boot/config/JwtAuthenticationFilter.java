@@ -29,7 +29,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final List<String> SKIP_PATHS = List.of(
             "/api/v1/auth/**",
             "/oauth2/**",
-            "/login/**"
+            "/login/**",
+            "/actuator/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**"
     );
 
     private final JwtService jwtService;

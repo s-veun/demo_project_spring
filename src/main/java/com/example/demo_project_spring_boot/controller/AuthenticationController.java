@@ -1,6 +1,9 @@
 package com.example.demo_project_spring_boot.controller;
 
 import com.example.demo_project_spring_boot.dto.*;
+import com.example.demo_project_spring_boot.exception.BadRequestException;
+import com.example.demo_project_spring_boot.exception.DuplicateResourceException;
+import com.example.demo_project_spring_boot.exception.UnauthorizedException;
 import com.example.demo_project_spring_boot.service.AuthenticationService;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -74,6 +77,14 @@ public class AuthenticationController {
             log.warn("Registration failed: {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (DuplicateResourceException e) {
+            log.warn("Registration conflict: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (BadRequestException e) {
+            log.warn("Registration request invalid: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
             log.error("Error during registration", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -117,6 +128,14 @@ public class AuthenticationController {
             log.warn("Login failed due to invalid credentials for user: {}", request.getUsername());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("success", false, "message", "Invalid credentials"));
+        } catch (UnauthorizedException e) {
+            log.warn("Login unauthorized for user {}: {}", request.getUsername(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", e.getMessage()));
+        } catch (BadRequestException e) {
+            log.warn("Login bad request for user {}: {}", request.getUsername(), e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", e.getMessage()));
         } catch (IllegalArgumentException e) {
             log.warn("Login request rejected for user {}: {}", request.getUsername(), e.getMessage());
             return ResponseEntity.badRequest()
@@ -168,6 +187,11 @@ public class AuthenticationController {
                     .build());
 
         } catch (Exception e) {
+            if (e instanceof UnauthorizedException) {
+                log.warn("Token refresh unauthorized: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResult.builder().success(false).message(e.getMessage()).build());
+            }
             log.warn("Token refresh failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResult.builder().success(false).message(e.getMessage()).build());

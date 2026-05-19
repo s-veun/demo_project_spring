@@ -1,0 +1,115 @@
+spring:
+  config:
+    activate:
+      on-profile: railway
+
+  main:
+    banner-mode: console
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:${JDBC_DATABASE_URL:}}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:${DB_USERNAME:}}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:${DB_PASSWORD:}}}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+    hikari:
+      pool-name: EcommerceHikariPool
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:12}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:30000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT_MS:300000}
+      max-lifetime: ${DB_POOL_MAX_LIFETIME_MS:1800000}
+      validation-timeout: ${DB_POOL_VALIDATION_TIMEOUT_MS:5000}
+      keepalive-time: ${DB_POOL_KEEPALIVE_MS:300000}
+      auto-commit: false
+      connection-init-sql: SET TIME ZONE 'UTC'
+      data-source-properties:
+        stringtype: unspecified
+
+  jpa:
+    open-in-view: false
+    show-sql: false
+    database-platform: ${SPRING_JPA_DATABASE_PLATFORM:}
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+        connection:
+          provider_disables_autocommit: true
+          charSet: UTF-8
+          useUnicode: true
+        order_inserts: true
+        order_updates: true
+
+  sql:
+    init:
+      mode: never
+
+  jackson:
+    time-zone: UTC
+
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+  forward-headers-strategy: framework
+  shutdown: graceful
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  compression:
+    enabled: true
+    min-response-size: 1024
+    mime-types: application/json,application/xml,text/html,text/plain,text/css,text/javascript,application/javascript
+
+auth:
+  google:
+    enabled: ${GOOGLE_OAUTH_ENABLED:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      show-components: never
+  health:
+    db:
+      enabled: true
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    org.springframework.security: ${LOG_LEVEL_SPRING_SECURITY:INFO}
+    org.springframework.security.oauth2: ${LOG_LEVEL_SPRING_SECURITY_OAUTH2:INFO}
+
+app:
+  security:
+    strict-startup-validation: ${APP_SECURITY_STRICT_STARTUP_VALIDATION:false}
+  jwt:
+    secret: ${JWT_SECRET:}
+    secret-format: ${JWT_SECRET_FORMAT:plain}
+    access-token-expiration: ${JWT_EXPIRATION:${JWT_ACCESS_TOKEN_EXPIRATION:86400000}}
+    refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+  oauth2:
+    authorized-redirect-uri: ${OAUTH2_AUTHORIZED_REDIRECT_URI:${FRONTEND_BASE_URL:${FRONTEND_URL:}}/auth/success}
+    allowed-redirect-uris: ${OAUTH2_ALLOWED_REDIRECT_URIS:${OAUTH2_AUTHORIZED_REDIRECT_URI:${FRONTEND_BASE_URL:${FRONTEND_URL:}}/auth/success}}
+
+cloudinary:
+  cloudName: ${CLOUDINARY_CLOUD_NAME:}
+  apiKey: ${CLOUDINARY_API_KEY:}
+  apiSecret: ${CLOUDINARY_API_SECRET:}
+

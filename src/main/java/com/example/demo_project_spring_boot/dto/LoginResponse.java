@@ -18,6 +18,7 @@ public class LoginResponse {
     private String message;
     private String accessToken;
     private String refreshToken;
+    @Builder.Default
     private String tokenType = "Bearer";
     private Long userId;
     private String username;

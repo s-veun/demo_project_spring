@@ -13,19 +13,18 @@ import org.springframework.util.StringUtils;
 @Slf4j
 public class OAuth2ConfigValidator {
 
-    @Value("${spring.security.oauth2.client.registration.google.client-id:}")
+    @Value("${GOOGLE_CLIENT_ID:}")
     private String googleClientId;
 
-    @Value("${spring.security.oauth2.client.registration.google.client-secret:}")
+    @Value("${GOOGLE_CLIENT_SECRET:}")
     private String googleClientSecret;
 
-    @Value("${spring.security.oauth2.client.registration.google.redirect-uri:{baseUrl}/login/oauth2/code/{registrationId}}")
-    private String googleRedirectUriTemplate;
+    private final String googleRedirectUriTemplate = "{baseUrl}/login/oauth2/code/{registrationId}";
 
-    @Value("${spring.security.oauth2.client.registration.facebook.client-id:}")
+    @Value("${FACEBOOK_APP_ID:}")
     private String facebookClientId;
 
-    @Value("${spring.security.oauth2.client.registration.facebook.client-secret:}")
+    @Value("${FACEBOOK_APP_SECRET:}")
     private String facebookClientSecret;
 
     @Value("${app.frontend-url:}")
@@ -40,9 +39,11 @@ public class OAuth2ConfigValidator {
         boolean hasGoogleSecret = StringUtils.hasText(googleClientSecret);
         boolean hasGoogleRedirect = StringUtils.hasText(googleRedirectUriTemplate);
 
-        if (!hasGoogleId || !hasGoogleSecret || !hasGoogleRedirect) {
-            log.warn("OAuth2 Google configuration is incomplete. Google login will fail with invalid_client.");
-            log.warn("Missing values => clientId:{}, clientSecret:{}, redirectUri:{}",
+        if (!hasGoogleId && !hasGoogleSecret) {
+            log.info("Google OAuth2 credentials are not set. Google login is disabled.");
+        } else if (!hasGoogleId || !hasGoogleSecret || !hasGoogleRedirect) {
+            log.warn("OAuth2 Google configuration is incomplete. Google login is disabled until all values are set.");
+            log.warn("Configured values => clientId:{}, clientSecret:{}, redirectUri:{}",
                     hasGoogleId, hasGoogleSecret, hasGoogleRedirect);
         } else {
             if (looksLikePlaceholder(googleClientId) || looksLikePlaceholder(googleClientSecret)) {

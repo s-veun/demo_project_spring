@@ -32,9 +32,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
-    // OAuth2 and OpenID Connect
+    // OAuth2 login
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 
     // Swagger / OpenAPI
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
@@ -54,7 +53,7 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    // Dev Tools
+    // Dev tools (not packaged in production bootJar)
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
     // Testing
@@ -67,11 +66,13 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-// បន្ថែមបំណែកនេះ ដើម្បីឱ្យ Railway ងាយស្រួលរកឃើញឯកសារ .jar
 jar {
     enabled = false
 }
 
 bootJar {
     archiveFileName = 'app.jar'
+    layered {
+        enabled = true
+    }
 }

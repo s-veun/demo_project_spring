@@ -30,7 +30,7 @@ public class BannerService {
     @Value("${banner.upload.dir:uploads/banners}")
     private String uploadDir;
 
-    @Value("${app.api.url:http://localhost:8080}")
+    @Value("${app.api.url:https://api.example.com}")
     private String apiUrl;
 
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB

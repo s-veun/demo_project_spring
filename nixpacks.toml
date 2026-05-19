@@ -5,4 +5,4 @@ nixPkgs = ["jdk21"]
 cmds = ["./gradlew bootJar --no-daemon -x test"]
 
 [start]
-cmd = "java -Dspring.profiles.active=default -Dspring.autoconfigure.exclude=com.google.cloud.spring.autoconfigure.sql.GcpCloudSqlAutoConfiguration -jar build/libs/*.jar"
+cmd = "java $JAVA_OPTS -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-railway} -Dserver.port=${PORT:-8080} -jar build/libs/app.jar"

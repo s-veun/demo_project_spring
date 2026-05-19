@@ -11,6 +11,7 @@ import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -18,6 +19,9 @@ import java.util.List;
 
 @Configuration
 public class OpenAPIConfig {
+
+    @Value("${app.api.url:https://api.example.com}")
+    private String apiUrl;
 
     // ✅ លុប static block SpringDocUtils.replaceWithClass ចេញទាំងស្រុង
     // ព្រោះវាបំផ្លាញ List<MultipartFile> rendering
@@ -80,11 +84,8 @@ public class OpenAPIConfig {
                                 .url("https://www.apache.org/licenses/LICENSE-2.0.html")))
                 .servers(List.of(
                         new Server()
-                                .url("https://demoprojectspring-production.up.railway.app")
-                                .description("🚀 Production Server (Railway)"),
-                        new Server()
-                                .url("http://localhost:8080")
-                                .description("💻 Local Development Server")))
+                                .url(apiUrl)
+                                .description("Primary API Server")))
                 .addSecurityItem(new SecurityRequirement()
                         .addList(securitySchemeName))
                 .components(new Components()
