@@ -9,6 +9,7 @@ import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -41,6 +42,55 @@ public class User {
 
     @Column(name = "profile_image_name")
     private String profileImageName;
+
+    private String fullName;
+
+    @Column(length = 1200)
+    private String bio;
+
+    private String gender;
+
+    private LocalDate dateOfBirth;
+
+    private String country;
+
+    private String city;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean emailVerified = false;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean phoneVerified = false;
+
+    private LocalDateTime emailVerifiedAt;
+
+    private LocalDateTime phoneVerifiedAt;
+
+    private String facebookUrl;
+
+    private String telegramHandle;
+
+    private String instagramUrl;
+
+    private String linkedInUrl;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean emailNotificationsEnabled = true;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean smsNotificationsEnabled = false;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean marketingNotificationsEnabled = false;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean securityAlertsEnabled = true;
 
     private String firstName;
     
@@ -107,6 +157,12 @@ public class User {
         if (this.isEnabled == null) this.isEnabled = true;
         if (this.isOAuth2Linked == null) this.isOAuth2Linked = false;
         if (this.provider == null) this.provider = AuthProvider.LOCAL;
+        if (this.emailVerified == null) this.emailVerified = false;
+        if (this.phoneVerified == null) this.phoneVerified = false;
+        if (this.emailNotificationsEnabled == null) this.emailNotificationsEnabled = true;
+        if (this.smsNotificationsEnabled == null) this.smsNotificationsEnabled = false;
+        if (this.marketingNotificationsEnabled == null) this.marketingNotificationsEnabled = false;
+        if (this.securityAlertsEnabled == null) this.securityAlertsEnabled = true;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }

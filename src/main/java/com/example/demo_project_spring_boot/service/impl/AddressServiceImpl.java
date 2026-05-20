@@ -47,7 +47,7 @@ public class AddressServiceImpl implements AddressService {
         }
 
         // ទាញយក List នៃ Entity រួចបំប្លែងទៅជា List នៃ DTO
-        return addressRepository.findByUserId(userId)
+        return addressRepository.findByUser_Id(userId)
                 .stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());

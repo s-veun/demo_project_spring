@@ -5,10 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AddressRepository extends JpaRepository<Address, Long> {
-    List<Address> findByUserId(Long userId);
-
-    Long addressId(Long addressId);
+    List<Address> findByUser_Id(Long userId);
+    Optional<Address> findByAddressIdAndUser_Id(Long addressId, Long userId);
+    Optional<Address> findByUser_IdAndIsDefaultTrue(Long userId);
 }

@@ -25,6 +25,31 @@ public class SchemaMigrationRunner implements CommandLineRunner {
         jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider_id VARCHAR(255)");
         jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_account_linked BOOLEAN NOT NULL DEFAULT FALSE");
         jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_name VARCHAR(255)");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR(255)");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio VARCHAR(1200)");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(30)");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100)");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100)");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT FALSE");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified_at TIMESTAMP");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS facebook_url VARCHAR(255)");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_handle VARCHAR(120)");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram_url VARCHAR(255)");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_in_url VARCHAR(255)");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS sms_notifications_enabled BOOLEAN NOT NULL DEFAULT FALSE");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS marketing_notifications_enabled BOOLEAN NOT NULL DEFAULT FALSE");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS security_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE");
+
+        jdbcTemplate.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS country VARCHAR(100)");
+        jdbcTemplate.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS state VARCHAR(100)");
+        jdbcTemplate.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS postal_code VARCHAR(20)");
+        jdbcTemplate.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS address_line1 VARCHAR(255)");
+        jdbcTemplate.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS address_line2 VARCHAR(255)");
+        jdbcTemplate.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT FALSE");
 
         // OAuth2 users may not have password in legacy schemas.
         try {

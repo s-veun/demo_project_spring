@@ -14,9 +14,17 @@ public class Address {
 
     private String fullName;
     private String phoneNumber;
+    private String country;
     private String city;
+    private String state;
     private String district;
+    private String postalCode;
+    private String addressLine1;
+    private String addressLine2;
     private String detailsAddress;
+
+    @Column(nullable = false)
+    private Boolean isDefault = false;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
