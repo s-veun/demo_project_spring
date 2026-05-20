@@ -13,8 +13,10 @@ import java.util.List;
 @ConfigurationProperties(prefix = "app.profile-image")
 public class ProfileImageProperties {
 
+    private String storageProvider = "cloudinary";
     private String uploadDir = "uploads/profile-images";
     private String publicBasePath = "/uploads/profile-images";
+    private String cloudinaryFolder = "uploads/profile-images";
     private String defaultUrl = "/uploads/profile-images/default-avatar.png";
     private String apiBaseUrl = "";
     private long maxFileSizeBytes = 5L * 1024L * 1024L;

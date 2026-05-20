@@ -6,6 +6,7 @@ import com.example.demo_project_spring_boot.service.FileStorageService;
 import com.example.demo_project_spring_boot.service.StoredImage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,6 +21,7 @@ import java.util.UUID;
 
 @Slf4j
 @Service
+@ConditionalOnProperty(name = "app.profile-image.storage-provider", havingValue = "local")
 @RequiredArgsConstructor
 public class LocalFileStorageService implements FileStorageService {
 

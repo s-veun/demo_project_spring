@@ -24,8 +24,10 @@ All endpoints require a valid JWT access token.
 
 ## Storage
 
-- Local disk folder: `uploads/profile-images`
-- Public URL base: `/uploads/profile-images`
+- Default provider: `cloudinary` (`app.profile-image.storage-provider=cloudinary`)
+- Cloudinary folder: `uploads/profile-images` (`app.profile-image.cloudinary-folder`)
+- Optional local provider: set `app.profile-image.storage-provider=local`
+- Local disk folder (when local provider is used): `uploads/profile-images`
 - Existing profile image is replaced automatically.
 - File names are random UUID-based and sanitized to prevent collisions.
 
