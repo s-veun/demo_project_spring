@@ -27,7 +27,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Banners", description = "Banner management APIs for homepage and admin dashboard")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class BannerController {
 
   private final BannerService bannerService;

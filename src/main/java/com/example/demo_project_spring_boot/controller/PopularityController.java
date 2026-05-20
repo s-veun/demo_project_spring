@@ -1,10 +1,17 @@
 package com.example.demo_project_spring_boot.controller;
 
 import com.example.demo_project_spring_boot.dto.ProductResponseDTO;
+import com.example.demo_project_spring_boot.exception.UnauthorizedException;
+import com.example.demo_project_spring_boot.model.User;
+import com.example.demo_project_spring_boot.repository.UserRepository;
 import com.example.demo_project_spring_boot.service.PopularityService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,9 +20,25 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/popularity")
 @RequiredArgsConstructor
+@Tag(name = "Popularity", description = "Product popularity, trending, and recommendation APIs")
 public class PopularityController {
 
     private final PopularityService popularityService;
+    private final UserRepository userRepository;
+
+    // ── Helper ──────────────────────────────────────────────────────────────
+
+    private Long resolveUserId(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getName())) {
+            throw new UnauthorizedException("Authentication required");
+        }
+        String username = authentication.getName();
+        User user = userRepository.findByUsername(username)
+                .or(() -> userRepository.findByEmail(username))
+                .orElseThrow(() -> new UnauthorizedException("Authenticated user not found in database"));
+        return user.getId();
+    }
 
     @PostMapping("/view/{productId}")
     public ResponseEntity<?> trackView(@PathVariable Long productId, HttpServletRequest request) {
@@ -84,9 +107,12 @@ public class PopularityController {
     }
 
     @GetMapping("/user/recently-viewed")
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<?> getRecentlyViewed(
-            @RequestParam Long userId,
+            Authentication authentication,
             @RequestParam(defaultValue = "10") int limit) {
+        Long userId = resolveUserId(authentication);
         List<ProductResponseDTO> products = popularityService.getRecentlyViewedByUser(userId, limit);
         return ResponseEntity.ok(Map.of(
                 "count", products.size(),
@@ -95,9 +121,12 @@ public class PopularityController {
     }
 
     @GetMapping("/user/recommendations")
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<?> getRecommendations(
-            @RequestParam Long userId,
+            Authentication authentication,
             @RequestParam(defaultValue = "10") int limit) {
+        Long userId = resolveUserId(authentication);
         List<ProductResponseDTO> products = popularityService.getRecommendedProducts(userId, limit);
         return ResponseEntity.ok(Map.of(
                 "count", products.size(),
@@ -106,6 +135,8 @@ public class PopularityController {
     }
 
     @PostMapping("/update-all-scores")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<?> updateAllScores() {
         popularityService.updateAllPopularityScores();
         return ResponseEntity.ok(Map.of("message", "All popularity scores updated"));

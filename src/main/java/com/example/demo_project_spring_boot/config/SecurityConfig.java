@@ -125,10 +125,11 @@ public class SecurityConfig {
 
                 // Public Authentication Routes (password + social + refresh)
                 .requestMatchers("/api/v1/auth/**").permitAll()
-                .requestMatchers(HttpMethod.POST,
-                        "/api/v1/admin/login",
-                        "/api/v1/admin/register"
-                ).permitAll()
+
+                // Admin login is public; admin register allows unauthenticated access for first-run bootstrap only
+                // (AdminController enforces: if any admin exists, ADMIN role required)
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/register").permitAll()
 
                 // Legacy UserController Auth Endpoints (deprecated - use /api/v1/auth/** instead)
                 .requestMatchers(HttpMethod.POST,
@@ -167,6 +168,12 @@ public class SecurityConfig {
 
                 // Cart Routes – accessible by both USER and ADMIN (ownership enforced in CartController)
                 .requestMatchers("/api/v1/cart/**").authenticated()
+
+                // Order Routes – authenticated; ownership enforced at controller/service level
+                .requestMatchers("/api/v1/orders/**").authenticated()
+
+                // Wishlist Routes – authenticated; ownership enforced in WishlistController
+                .requestMatchers("/api/v1/wishlist/**").authenticated()
 
                 // USER-only routes
                 .requestMatchers("/api/v1/user/**").hasRole("USER")

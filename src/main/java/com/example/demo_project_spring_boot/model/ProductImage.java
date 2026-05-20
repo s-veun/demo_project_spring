@@ -24,7 +24,7 @@ public class ProductImage {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String imageUrl;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String publicId;
 
     // =========================================

@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -57,7 +58,7 @@ public class AuthenticationController {
             @ApiResponse(responseCode = "400", description = "Invalid input or user already exists"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<?> registerUser(@RequestBody RegisterRequest request) {
+    public ResponseEntity<?> registerUser(@RequestBody @Valid RegisterRequest request) {
         try {
             log.info("Register endpoint called for user: {}", request.getUsername());
 
@@ -113,7 +114,7 @@ public class AuthenticationController {
             @ApiResponse(responseCode = "401", description = "Unauthorized - invalid credentials"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<?> loginUser(@RequestBody LoginRequest request, HttpServletResponse httpResponse) {
+    public ResponseEntity<?> loginUser(@RequestBody @Valid LoginRequest request, HttpServletResponse httpResponse) {
         try {
             log.info("Login endpoint called for user: {}", request.getUsername());
 

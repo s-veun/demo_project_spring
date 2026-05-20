@@ -140,7 +140,15 @@ public class UserServiceImpl implements UserService {
         return UserProfileResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .profileImageUrl(user.getProfileImageUrl())
                 .role(user.getRole() != null ? user.getRole() : Role.USER)
+                .isEnabled(user.getIsEnabled())
+                .createdAt(user.getCreatedAt())
+                .lastLoginAt(user.getLastLoginAt())
                 .addresses(addressDtos)
                 .build();
     }

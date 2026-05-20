@@ -3,6 +3,7 @@ package com.example.demo_project_spring_boot.controller;
 import com.example.demo_project_spring_boot.dto.ChangePasswordRequest;
 import com.example.demo_project_spring_boot.dto.LoginResponse;
 import com.example.demo_project_spring_boot.dto.LoginRequest;
+import com.example.demo_project_spring_boot.dto.RegisterResponse;
 import com.example.demo_project_spring_boot.dto.UserProfileResponse;
 import com.example.demo_project_spring_boot.dto.RegisterRequest;
 import com.example.demo_project_spring_boot.model.User;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,19 +41,14 @@ public class UserController {
             @ApiResponse(responseCode = "400", description = "Bad request")
     })
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody RegisterRequest request) {
-        // ✅ convert RegisterRequest → User
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword());
-        user.setEmail(request.getEmail());
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        user.setPhoneNumber(request.getPhoneNumber());
-
-        User registeredUser = userService.registerUser(user);
-        registeredUser.setPassword(null);
-        return new ResponseEntity<>(registeredUser, HttpStatus.CREATED);
+    public ResponseEntity<?> registerUser(@RequestBody @Valid RegisterRequest request) {
+        // Delegate to AuthenticationService to ensure consistent password hashing and token generation
+        try {
+            RegisterResponse response = authenticationService.registerUser(request);
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("success", false, "message", e.getMessage()));
+        }
     }
 
     // ✅ ប្រើ LoginRequest DTO ជំនួស User entity
@@ -61,7 +58,7 @@ public class UserController {
             @ApiResponse(responseCode = "401", description = "Invalid credentials")
     })
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@RequestBody @Valid LoginRequest request) {
         try {
             LoginResponse authResponse = authenticationService.loginUser(request);
 

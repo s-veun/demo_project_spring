@@ -24,7 +24,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -74,23 +76,24 @@ public class AdminController {
     private final UserDetailsService userDetailsService;
     private final TokenCookieService tokenCookieService;
 
-    // ✅ ១. Admin Register — Public
+    // ✅ ១. Admin Register — requires ADMIN role (or first-run if no admin exists)
     @PostMapping("/register")
-    @Operation(summary = "Register new ADMIN account")
-    public ResponseEntity<?> registerAdmin(@RequestBody RegisterRequest request) {
+    @Operation(summary = "Register new ADMIN account (requires existing ADMIN or first-run bootstrap)")
+    public ResponseEntity<?> registerAdmin(
+            @RequestBody @Valid RegisterRequest request,
+            Authentication authentication) {
         try {
-            // Validate input
-            if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "Username is required"));
-            }
-            if (request.getPassword() == null || request.getPassword().length() < 6) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "Password must be at least 6 characters"));
-            }
-            if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "Email is required"));
+            // Allow registration only if the requester is an ADMIN,
+            // OR if no admin accounts exist yet (first-run bootstrap).
+            boolean isAdmin = authentication != null && authentication.isAuthenticated()
+                    && authentication.getAuthorities().stream()
+                            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+            boolean firstRun = userRepository.countByRole(Role.ADMIN) == 0;
+
+            if (!isAdmin && !firstRun) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("success", false,
+                                "message", "Admin registration is disabled once an admin account exists. Login as ADMIN to create new admin accounts."));
             }
 
             User user = new User();
@@ -106,7 +109,14 @@ public class AdminController {
             User registeredAdmin = userService.registerAdmin(user);
             registeredAdmin.setPassword(null); // Don't expose password in response
 
-            return new ResponseEntity<>(registeredAdmin, HttpStatus.CREATED);
+            return new ResponseEntity<>(Map.of(
+                    "success", true,
+                    "message", "Admin account created successfully",
+                    "userId", registeredAdmin.getId(),
+                    "username", registeredAdmin.getUsername(),
+                    "email", registeredAdmin.getEmail(),
+                    "role", "ADMIN"
+            ), HttpStatus.CREATED);
         } catch (DuplicateResourceException e) {
             return ResponseEntity.badRequest()
                     .body(Map.of("success", false, "message", e.getMessage()));
@@ -119,7 +129,7 @@ public class AdminController {
     // ✅ ២. Admin Login — Public
     @PostMapping("/login")
     @Operation(summary = "Admin login — returns JWT token")
-    public ResponseEntity<?> loginAdmin(@RequestBody LoginRequest request, HttpServletResponse httpResponse) {
+    public ResponseEntity<?> loginAdmin(@RequestBody @Valid LoginRequest request, HttpServletResponse httpResponse) {
         try {
             if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
                 return ResponseEntity.badRequest()

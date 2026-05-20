@@ -77,6 +77,16 @@ public class SchemaMigrationRunner implements CommandLineRunner {
         }
 
         log.info("OAuth2 schema migration check complete.");
+
+        // ── product_images.public_id — allow NULL for pre-uploaded URLs ──────────────
+        try {
+            jdbcTemplate.execute("ALTER TABLE product_images ALTER COLUMN public_id DROP NOT NULL");
+            log.info("product_images.public_id nullable migration applied.");
+        } catch (Exception ex) {
+            log.debug("product_images.public_id already nullable or migration skipped: {}", ex.getMessage());
+        }
+
+        log.info("Schema migration complete.");
     }
 }
 

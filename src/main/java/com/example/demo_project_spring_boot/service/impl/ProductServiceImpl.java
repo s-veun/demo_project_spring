@@ -16,6 +16,7 @@ import com.example.demo_project_spring_boot.service.CloudinaryService;
 import com.example.demo_project_spring_boot.service.ProductService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class ProductServiceImpl implements ProductService {
 
     private final ProductReposity productReposity;
@@ -269,11 +271,13 @@ public class ProductServiceImpl implements ProductService {
             if (!existingProduct.getImages().isEmpty()) {
                 ProductImage oldImage = existingProduct.getImages().getFirst();
                 try {
-                    cloudinaryService.deleteFile(oldImage.getPublicId());
+                    if (oldImage.getPublicId() != null && !oldImage.getPublicId().isBlank()) {
+                        cloudinaryService.deleteFile(oldImage.getPublicId());
+                    }
                     productImageRepository.delete(oldImage);
                     existingProduct.getImages().clear();
                 } catch (Exception e) {
-                    System.err.println("Failed to delete old image: " + e.getMessage());
+                    log.warn("[ProductService] Failed to delete old image publicId={}: {}", oldImage.getPublicId(), e.getMessage());
                 }
             }
 
@@ -308,9 +312,11 @@ public class ProductServiceImpl implements ProductService {
 
         for (ProductImage image : product.getImages()) {
             try {
-                cloudinaryService.deleteFile(image.getPublicId());
+                if (image.getPublicId() != null && !image.getPublicId().isBlank()) {
+                    cloudinaryService.deleteFile(image.getPublicId());
+                }
             } catch (Exception e) {
-                System.err.println("Failed to delete image: " + e.getMessage());
+                log.warn("[ProductService] Failed to delete Cloudinary image publicId={}: {}", image.getPublicId(), e.getMessage());
             }
         }
 

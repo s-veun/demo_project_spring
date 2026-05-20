@@ -1,6 +1,8 @@
 package com.example.demo_project_spring_boot.controller;
 
 import com.example.demo_project_spring_boot.service.DashboardService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +16,8 @@ import java.util.Map;
 @RequestMapping("/api/v1/admin/dashboard")
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
+@Tag(name = "Admin Dashboard", description = "Admin dashboard analytics and statistics APIs")
+@SecurityRequirement(name = "bearerAuth")
 public class DashboardController {
 
     private final DashboardService dashboardService;
