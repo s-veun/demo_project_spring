@@ -34,7 +34,6 @@ public class UserController {
     private final AuthenticationService authenticationService;
     private final UserService userService;
 
-    // ✅ ប្រើ RegisterRequest DTO ជំនួស User entity
     @Operation(summary = "Register new user")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "User registered successfully"),
@@ -51,7 +50,6 @@ public class UserController {
         }
     }
 
-    // ✅ ប្រើ LoginRequest DTO ជំនួស User entity
     @Operation(summary = "Login and get JWT token")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Login successful"),

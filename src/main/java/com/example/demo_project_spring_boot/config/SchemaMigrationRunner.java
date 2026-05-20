@@ -24,6 +24,7 @@ public class SchemaMigrationRunner implements CommandLineRunner {
         jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider VARCHAR(50)");
         jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider_id VARCHAR(255)");
         jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_account_linked BOOLEAN NOT NULL DEFAULT FALSE");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_name VARCHAR(255)");
 
         // OAuth2 users may not have password in legacy schemas.
         try {

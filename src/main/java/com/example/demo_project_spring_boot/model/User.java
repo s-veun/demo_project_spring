@@ -39,6 +39,9 @@ public class User {
     @Column(name = "profile_image")
     private String profileImageUrl;
 
+    @Column(name = "profile_image_name")
+    private String profileImageName;
+
     private String firstName;
     
     private String lastName;
@@ -111,6 +114,14 @@ public class User {
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public String getProfileImageName() {
+        return profileImageName;
+    }
+
+    public void setProfileImageName(String profileImageName) {
+        this.profileImageName = profileImageName;
     }
 
     public Collection<? extends GrantedAuthority> getAuthorities(){

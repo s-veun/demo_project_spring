@@ -177,6 +177,7 @@ public class SecurityConfig {
 
                 // USER-only routes
                 .requestMatchers("/api/v1/user/**").hasRole("USER")
+                .requestMatchers("/api/v1/users/**").authenticated()
                 .requestMatchers("/api/v1/popularity/user/**").hasRole("USER")
                 .requestMatchers(HttpMethod.GET, "/api/v1/profile/**", "/api/v1/me").hasRole("USER")
 
