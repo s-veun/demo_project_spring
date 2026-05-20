@@ -32,7 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
-@RequestMapping({"/api/v1/user", "/api/v1/users"})
+@RequestMapping({"/api/v1/users"})
 @RequiredArgsConstructor
 @Tag(name = "User Profile APIs", description = "Profile APIs for authenticated users")
 public class UserProfileController {
