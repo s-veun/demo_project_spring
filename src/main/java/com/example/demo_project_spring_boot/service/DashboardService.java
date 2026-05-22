@@ -1,6 +1,5 @@
 package com.example.demo_project_spring_boot.service;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -29,4 +28,16 @@ public interface DashboardService {
     
     // Low stock alerts
     Map<String, Object> getLowStockAlerts(int threshold);
+
+    Map<String, Object> getPerformanceMetrics(String period);
+
+    Map<String, Object> getUserEngagement();
+
+    Map<String, Object> getInventorySummary(int threshold);
+
+    Map<String, Object> getPaymentStatus();
+
+    Map<String, Object> getMetricsComparison(String period);
+
+    Map<String, Object> getDashboardAnalytics();
 }

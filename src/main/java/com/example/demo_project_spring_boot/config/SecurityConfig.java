@@ -3,6 +3,7 @@ package com.example.demo_project_spring_boot.config;
 import com.example.demo_project_spring_boot.security.CustomAuthenticationEntryPoint;
 import com.example.demo_project_spring_boot.security.CustomAccessDeniedHandler;
 import com.example.demo_project_spring_boot.security.CustomOAuth2UserService;
+import com.example.demo_project_spring_boot.security.AdminRateLimitFilter;
 import com.example.demo_project_spring_boot.security.OAuth2AuthenticationFailureHandler;
 import com.example.demo_project_spring_boot.security.OAuth2AuthenticationSuccessHandler;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +46,9 @@ public class SecurityConfig {
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthFilter;
+
+    @Autowired
+    private AdminRateLimitFilter adminRateLimitFilter;
 
     @Autowired
     private UserDetailsService userDetailsService;
@@ -191,6 +195,7 @@ public class SecurityConfig {
 
         // Authentication Provider and JWT Filter
         http.authenticationProvider(authenticationProvider())
+                .addFilterBefore(adminRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/dashboard")
@@ -59,5 +60,57 @@ public class DashboardController {
     public ResponseEntity<?> getLowStockAlerts(
             @RequestParam(defaultValue = "10") int threshold) {
         return ResponseEntity.ok(dashboardService.getLowStockAlerts(threshold));
+    }
+
+    @GetMapping("/performance")
+    public ResponseEntity<?> getPerformance(
+            @RequestParam(defaultValue = "monthly") String period) {
+        return ResponseEntity.ok(dashboardService.getPerformanceMetrics(period));
+    }
+
+    @GetMapping("/users/engagement")
+    public ResponseEntity<?> getUserEngagement() {
+        return ResponseEntity.ok(dashboardService.getUserEngagement());
+    }
+
+    @GetMapping("/inventory")
+    public ResponseEntity<?> getInventorySummary(
+            @RequestParam(defaultValue = "10") int threshold) {
+        return ResponseEntity.ok(dashboardService.getInventorySummary(threshold));
+    }
+
+    @GetMapping("/payment-status")
+    public ResponseEntity<?> getPaymentStatus() {
+        return ResponseEntity.ok(dashboardService.getPaymentStatus());
+    }
+
+    @GetMapping("/comparison")
+    public ResponseEntity<?> getMetricsComparison(
+            @RequestParam(defaultValue = "month") String period) {
+        return ResponseEntity.ok(dashboardService.getMetricsComparison(period));
+    }
+
+    @GetMapping("/analytics")
+    public ResponseEntity<?> getDashboardAnalytics() {
+        return ResponseEntity.ok(dashboardService.getDashboardAnalytics());
+    }
+
+    @PostMapping("/export")
+    public ResponseEntity<?> exportDashboard(@RequestBody Map<String, Object> request) {
+        String format = String.valueOf(request.getOrDefault("format", "csv"));
+        String filename = "admin-dashboard-" + LocalDateTime.now().toLocalDate() + "." + format;
+        return ResponseEntity.ok(Map.of(
+                "url", "/api/v1/admin/dashboard/reports/download/" + filename,
+                "filename", filename
+        ));
+    }
+
+    @PostMapping("/reports/generate")
+    public ResponseEntity<?> generateReport(@RequestBody Map<String, Object> request) {
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "reportId", UUID.randomUUID().toString(),
+                "downloadUrl", "/api/v1/admin/dashboard/reports/download/generated-report"
+        ));
     }
 }

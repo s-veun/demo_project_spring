@@ -112,6 +112,41 @@ public class SchemaMigrationRunner implements CommandLineRunner {
             log.debug("product_images.public_id already nullable or migration skipped: {}", ex.getMessage());
         }
 
+        // ── settings module tables ───────────────────────────────────────────────────
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS settings (
+                    id BIGSERIAL PRIMARY KEY,
+                    setting_key VARCHAR(200) NOT NULL,
+                    setting_value TEXT NOT NULL,
+                    category VARCHAR(50) NOT NULL,
+                    description VARCHAR(500),
+                    updated_by VARCHAR(120),
+                    tenant_key VARCHAR(80) NOT NULL DEFAULT 'default',
+                    locale_key VARCHAR(20) NOT NULL DEFAULT 'en',
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                    CONSTRAINT uk_settings_key_tenant_locale UNIQUE (setting_key, tenant_key, locale_key)
+                )
+                """);
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_settings_category ON settings(category)");
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_settings_tenant_locale ON settings(tenant_key, locale_key)");
+
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS setting_audit_logs (
+                    id BIGSERIAL PRIMARY KEY,
+                    setting_key VARCHAR(200) NOT NULL,
+                    action_type VARCHAR(50) NOT NULL,
+                    old_value TEXT,
+                    new_value TEXT,
+                    updated_by VARCHAR(120),
+                    tenant_key VARCHAR(80) NOT NULL DEFAULT 'default',
+                    locale_key VARCHAR(20) NOT NULL DEFAULT 'en',
+                    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+                """);
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_setting_audit_key ON setting_audit_logs(setting_key)");
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_setting_audit_updated_at ON setting_audit_logs(updated_at)");
+
         log.info("Schema migration complete.");
     }
 }
