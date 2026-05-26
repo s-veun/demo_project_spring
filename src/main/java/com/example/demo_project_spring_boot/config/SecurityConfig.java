@@ -71,7 +71,7 @@ public class SecurityConfig {
     @Autowired
     private OAuth2ClientConfig oauth2ClientConfig;
 
-    @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:3001}")
+    @Value("${app.cors.allowed-origins:${cors.allowed-origins:http://localhost:3000,http://localhost:3001}}")
     private String allowedOrigins;
 
     @Bean
