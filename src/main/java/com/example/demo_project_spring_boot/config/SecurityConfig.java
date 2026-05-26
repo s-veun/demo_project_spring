@@ -71,7 +71,7 @@ public class SecurityConfig {
     @Autowired
     private OAuth2ClientConfig oauth2ClientConfig;
 
-    @Value("${app.cors.allowed-origins:https://your-frontend-domain.com}")
+    @Value("${cors.allowed-origins:https://your-frontend-domain.com}")
     private String allowedOrigins;
 
     @Bean
