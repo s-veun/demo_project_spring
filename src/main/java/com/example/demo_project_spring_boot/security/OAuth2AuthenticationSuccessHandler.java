@@ -82,7 +82,6 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
             String redirect = UriComponentsBuilder.fromUriString(frontendRedirectUri)
                     .queryParam("token", accessToken)
-                    .queryParam("refreshToken", refreshToken)
                     .queryParam("provider", provider.name())
                     .build()
                     .toUriString();

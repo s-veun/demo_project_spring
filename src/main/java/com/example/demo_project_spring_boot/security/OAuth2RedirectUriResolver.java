@@ -50,13 +50,8 @@ public class OAuth2RedirectUriResolver {
     /**
      * Returns true when the candidate URL is safe to redirect to.
      *
-     * Strict mode  (any allow-list entry is configured):  candidate must be
-     *              explicitly present in the allow list.
-     * Permissive mode (no allow-list configured at all): any valid absolute
-     *              http/https URL is accepted.  This is intentional for
-     *              development environments where FRONTEND_URL is not yet set.
-     *              Set FRONTEND_URL, OAUTH2_AUTHORIZED_REDIRECT_URI, or
-     *              OAUTH2_ALLOWED_REDIRECT_URIS on Railway to enable strict mode.
+     * Candidate must be an absolute http/https URL and explicitly present in
+     * the configured allow-list.
      */
     private boolean isAllowed(String candidate) {
         if (!StringUtils.hasText(candidate) || !isAbsoluteHttpUrl(candidate)) {
@@ -66,9 +61,8 @@ public class OAuth2RedirectUriResolver {
         Set<String> allowList = buildAllowList();
 
         if (allowList.isEmpty()) {
-            // No configuration at all → permissive / dev mode: accept any valid HTTP(S) URL.
-            log.warn("No OAuth2 redirect allow-list configured – accepting {} (set FRONTEND_URL on the server to enable strict mode)", candidate);
-            return true;
+            log.warn("No OAuth2 redirect allow-list configured – rejecting frontend_redirect_uri. Configure FRONTEND_URL or OAUTH2_ALLOWED_REDIRECT_URIS.");
+            return false;
         }
 
         return allowList.contains(candidate);

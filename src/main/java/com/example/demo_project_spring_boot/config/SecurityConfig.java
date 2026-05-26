@@ -22,6 +22,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -92,6 +93,18 @@ public class SecurityConfig {
                 .authenticationEntryPoint(customAuthenticationEntryPoint)
                 .accessDeniedHandler(customAccessDeniedHandler));
 
+        // Security headers for browser-facing traffic.
+        http.headers(headers -> headers
+                .frameOptions(frame -> frame.deny())
+                .contentTypeOptions(contentType -> {
+                })
+                .referrerPolicy(referrer -> referrer
+                        .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                .httpStrictTransportSecurity(hsts -> hsts
+                        .includeSubDomains(true)
+                        .maxAgeInSeconds(31536000))
+        );
+
         // OAuth2 Login — only wired when at least one provider has real credentials
         if (oauth2ClientConfig.hasAnyRegistration()) {
             http.oauth2Login(oauth2 -> oauth2
@@ -131,9 +144,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/**").permitAll()
 
                 // Admin login is public; admin register allows unauthenticated access for first-run bootstrap only
-                // (AdminController enforces: if any admin exists, ADMIN role required)
                 .requestMatchers(HttpMethod.POST, "/api/v1/admin/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/admin/register").permitAll()
+                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
                 // Legacy UserController Auth Endpoints (deprecated - use /api/v1/auth/** instead)
                 .requestMatchers(HttpMethod.POST,
@@ -240,6 +253,7 @@ public class SecurityConfig {
         exactOriginSet.add("http://localhost:3001");
         exactOriginSet.add("http://127.0.0.1:3000");
         exactOriginSet.add("http://127.0.0.1:3001");
+        exactOriginSet.add("https://maura-admin.vercel.app");
 
         config.setAllowedOrigins(List.copyOf(exactOriginSet));
         config.setAllowedOriginPatterns(wildcardOrigins);
