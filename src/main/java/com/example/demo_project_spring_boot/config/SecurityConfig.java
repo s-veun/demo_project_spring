@@ -254,6 +254,7 @@ public class SecurityConfig {
         exactOriginSet.add("http://127.0.0.1:3000");
         exactOriginSet.add("http://127.0.0.1:3001");
         exactOriginSet.add("https://maura-admin.vercel.app");
+        exactOriginSet.add("https://maura-frontend.vercel.app/");
 
         config.setAllowedOrigins(List.copyOf(exactOriginSet));
         config.setAllowedOriginPatterns(wildcardOrigins);
