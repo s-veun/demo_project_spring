@@ -251,8 +251,7 @@ public class SecurityConfig {
         LinkedHashSet<String> exactOriginSet = new LinkedHashSet<>(exactOrigins);
         exactOriginSet.add("http://localhost:3000");
         exactOriginSet.add("http://localhost:3001");
-        exactOriginSet.add("http://127.0.0.1:3000");
-        exactOriginSet.add("http://127.0.0.1:3001");
+        exactOriginSet.add("http://localhost:5173");
         exactOriginSet.add("https://maura-admin.vercel.app");
         exactOriginSet.add("https://maura-frontend.vercel.app/");
 
