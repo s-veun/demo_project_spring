@@ -418,8 +418,8 @@ public class ProductController {
             description = "Retrieve products that arrived within the specified number of days",
             tags = {"Products", "New Arrivals"})
     public ResponseEntity<?> getNewArrivalProducts(
-            @RequestParam(value = "days", defaultValue = "30")
-            @Parameter(description = "Number of days to look back for arrivals (default: 30)")
+            @RequestParam(value = "days", defaultValue = "4")
+            @Parameter(description = "Number of days to look back for arrivals (default: 4)")
             Integer days) {
 
         try {
