@@ -1,6 +1,10 @@
 package com.example.demo_project_spring_boot.service.impl;
 
+import com.example.demo_project_spring_boot.config.JwtService;
 import com.example.demo_project_spring_boot.config.ProfileImageProperties;
+import com.example.demo_project_spring_boot.dto.AddressDto;
+import com.example.demo_project_spring_boot.dto.UpdateProfileWithTokenResponse;
+import com.example.demo_project_spring_boot.dto.UpdateProfileWithTokenResponse.UpdatedSecurityField;
 import com.example.demo_project_spring_boot.dto.UploadImageResponse;
 import com.example.demo_project_spring_boot.dto.UserProfileResponse;
 import com.example.demo_project_spring_boot.dto.request.ChangeUserPasswordRequest;
@@ -57,6 +61,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     private final PasswordEncoder passwordEncoder;
     private final ProfileUploadRateLimiter profileUploadRateLimiter;
     private final ProfileImageProperties profileImageProperties;
+    private final JwtService jwtService;
 
     @Override
     @Transactional(readOnly = true)
@@ -69,6 +74,113 @@ public class UserProfileServiceImpl implements UserProfileService {
     public UserProfileResponse updateMyProfile(String principalName, UpdateUserProfileRequest request) {
         User user = findUserByPrincipal(principalName);
 
+        // Detect security field changes before updating
+        String oldUsername = user.getUsername();
+        String oldEmail = user.getEmail();
+
+        updateProfileFields(user, request);
+
+        User saved = userRepository.save(user);
+        log.info("Profile updated. userId={}, oldUsername={}, newUsername={}, oldEmail={}, newEmail={}",
+                saved.getId(), oldUsername, saved.getUsername(), oldEmail, saved.getEmail());
+        
+        return mapToProfileResponse(saved);
+    }
+
+    /**
+     * Update profile and handle token regeneration if username/email changed
+     * Returns both profile data and new tokens if regeneration occurred
+     */
+    public UpdateProfileWithTokenResponse updateMyProfileWithTokens(
+            String principalName,
+            UpdateUserProfileRequest request) {
+        
+        User user = findUserByPrincipal(principalName);
+
+        String oldUsername = user.getUsername();
+        String oldEmail = user.getEmail();
+
+        updateProfileFields(user, request);
+
+        User saved = userRepository.save(user);
+        
+        // Detect which security fields changed
+        UpdatedSecurityField securityFieldUpdated = detectSecurityFieldChanges(oldUsername, oldEmail, saved);
+        
+        if (securityFieldUpdated != UpdatedSecurityField.NONE) {
+            log.info("[SECURITY] Security field changed for user: {} | field: {} | oldUsername: {} → newUsername: {} | oldEmail: {} → newEmail: {}",
+                    saved.getId(), securityFieldUpdated, oldUsername, saved.getUsername(), oldEmail, saved.getEmail());
+            
+            // Generate new tokens with updated username/email
+            String newAccessToken = jwtService.generateAccessToken(
+                    saved.getId(),
+                    saved.getUsername(),
+                    saved.getEmail(),
+                    saved.getRole().name()
+            );
+            
+            String newRefreshToken = jwtService.generateRefreshToken(
+                    saved.getUsername(),
+                    saved.getId()
+            );
+            
+            // Store new tokens in database
+            saved.setAccessToken(newAccessToken);
+            saved.setRefreshToken(newRefreshToken);
+            userRepository.save(saved);
+            
+            log.info("[SECURITY] New JWT tokens generated for user: {} | username: {} | timestamp: {}",
+                    saved.getId(), saved.getUsername(), System.currentTimeMillis());
+            
+            return UpdateProfileWithTokenResponse.builder()
+                    .success(true)
+                    .message("Profile updated successfully. New authentication tokens generated due to username/email change.")
+                    .profile(mapToProfileResponse(saved))
+                    .accessToken(newAccessToken)
+                    .refreshToken(newRefreshToken)
+                    .tokenType("Bearer")
+                    .expiresIn(jwtService.getAccessTokenExpirationSeconds())
+                    .tokensRegenerated(true)
+                    .securityFieldUpdated(securityFieldUpdated)
+                    .build();
+        } else {
+            // No security fields changed, return profile only
+            return UpdateProfileWithTokenResponse.builder()
+                    .success(true)
+                    .message("Profile updated successfully")
+                    .profile(mapToProfileResponse(saved))
+                    .tokensRegenerated(false)
+                    .securityFieldUpdated(UpdatedSecurityField.NONE)
+                    .build();
+        }
+    }
+
+    /**
+     * Detect which security fields (username or email) were changed
+     */
+    private UpdatedSecurityField detectSecurityFieldChanges(
+            String oldUsername,
+            String oldEmail,
+            User updatedUser) {
+        
+        boolean usernameChanged = !Objects.equals(oldUsername, updatedUser.getUsername());
+        boolean emailChanged = !Objects.equals(oldEmail, updatedUser.getEmail());
+        
+        if (usernameChanged && emailChanged) {
+            return UpdatedSecurityField.BOTH;
+        } else if (usernameChanged) {
+            return UpdatedSecurityField.USERNAME;
+        } else if (emailChanged) {
+            return UpdatedSecurityField.EMAIL;
+        } else {
+            return UpdatedSecurityField.NONE;
+        }
+    }
+
+    /**
+     * Apply requested profile field updates to user entity
+     */
+    private void updateProfileFields(User user, UpdateUserProfileRequest request) {
         if (StringUtils.hasText(request.getUsername())) {
             String normalized = normalize(request.getUsername());
             userRepository.findByUsername(normalized)
@@ -115,10 +227,6 @@ public class UserProfileServiceImpl implements UserProfileService {
         if (request.getTelegramHandle() != null) {
             user.setTelegramHandle(normalize(request.getTelegramHandle()));
         }
-
-        User saved = userRepository.save(user);
-        log.info("Profile updated. userId={}, username={}", saved.getId(), saved.getUsername());
-        return mapToProfileResponse(saved);
     }
 
     @Override
@@ -180,17 +288,16 @@ public class UserProfileServiceImpl implements UserProfileService {
         user.setProfileImageName(null);
         user.setProfileImageUrl(null);
         User saved = userRepository.save(user);
-        log.info("Profile image removed for user={}", saved.getUsername());
+
+        log.info("Profile image deleted for user={}", user.getUsername());
 
         return mapToProfileResponse(saved);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<UserAddressResponse> getMyAddresses(String principalName) {
         User user = findUserByPrincipal(principalName);
-        return addressRepository.findByUser_Id(user.getId())
-                .stream()
+        return addressRepository.findByUser_Id(user.getId()).stream()
                 .map(this::mapAddress)
                 .collect(Collectors.toList());
     }
@@ -198,14 +305,24 @@ public class UserProfileServiceImpl implements UserProfileService {
     @Override
     public UserAddressResponse addAddress(String principalName, UserAddressRequest request) {
         User user = findUserByPrincipal(principalName);
-        Address address = new Address();
-        applyAddressRequest(address, request);
-        address.setUser(user);
 
-        if (Boolean.TRUE.equals(request.getIsDefault())) {
+        if (request.getIsDefault() == Boolean.TRUE) {
             clearDefaultAddress(user.getId());
-            address.setIsDefault(true);
         }
+
+        Address address = new Address();
+        address.setUser(user);
+        address.setFullName(normalize(request.getFullName()));
+        address.setPhoneNumber(normalize(request.getPhoneNumber()));
+        address.setCountry(normalize(request.getCountry()));
+        address.setCity(normalize(request.getCity()));
+        address.setState(normalize(request.getState()));
+        address.setDistrict(normalize(request.getDistrict()));
+        address.setPostalCode(normalize(request.getPostalCode()));
+        address.setAddressLine1(normalize(request.getAddressLine1()));
+        address.setAddressLine2(normalize(request.getAddressLine2()));
+        address.setDetailsAddress(normalize(request.getDetailsAddress()));
+        address.setIsDefault(request.getIsDefault() == Boolean.TRUE);
 
         Address saved = addressRepository.save(address);
         return mapAddress(saved);
@@ -214,15 +331,18 @@ public class UserProfileServiceImpl implements UserProfileService {
     @Override
     public UserAddressResponse updateAddress(String principalName, Long addressId, UserAddressRequest request) {
         User user = findUserByPrincipal(principalName);
-        Address address = addressRepository.findByAddressIdAndUser_Id(addressId, user.getId())
+        Address address = addressRepository.findById(addressId)
                 .orElseThrow(() -> new ResourceNotFoundException("Address not found"));
 
-        applyAddressRequest(address, request);
-        if (Boolean.TRUE.equals(request.getIsDefault())) {
-            clearDefaultAddress(user.getId());
-            address.setIsDefault(true);
+        if (!Objects.equals(address.getUser().getId(), user.getId())) {
+            throw new BadRequestException("Cannot modify address of another user");
         }
 
+        if (request.getIsDefault() == Boolean.TRUE) {
+            clearDefaultAddress(user.getId());
+        }
+
+        applyAddressRequest(address, request);
         Address saved = addressRepository.save(address);
         return mapAddress(saved);
     }
@@ -230,37 +350,53 @@ public class UserProfileServiceImpl implements UserProfileService {
     @Override
     public void deleteAddress(String principalName, Long addressId) {
         User user = findUserByPrincipal(principalName);
-        Address address = addressRepository.findByAddressIdAndUser_Id(addressId, user.getId())
+        Address address = addressRepository.findById(addressId)
                 .orElseThrow(() -> new ResourceNotFoundException("Address not found"));
+
+        if (!Objects.equals(address.getUser().getId(), user.getId())) {
+            throw new BadRequestException("Cannot delete address of another user");
+        }
+
         addressRepository.delete(address);
     }
 
     @Override
     public UserProfileResponse updateNotificationSettings(String principalName, NotificationSettingsRequest request) {
         User user = findUserByPrincipal(principalName);
-        user.setEmailNotificationsEnabled(request.getEmailNotificationsEnabled());
-        user.setSmsNotificationsEnabled(request.getSmsNotificationsEnabled());
-        user.setMarketingNotificationsEnabled(request.getMarketingNotificationsEnabled());
-        user.setSecurityAlertsEnabled(request.getSecurityAlertsEnabled());
+
+        if (request.getEmailNotificationsEnabled() != null) {
+            user.setEmailNotificationsEnabled(request.getEmailNotificationsEnabled());
+        }
+        if (request.getSmsNotificationsEnabled() != null) {
+            user.setSmsNotificationsEnabled(request.getSmsNotificationsEnabled());
+        }
+        if (request.getMarketingNotificationsEnabled() != null) {
+            user.setMarketingNotificationsEnabled(request.getMarketingNotificationsEnabled());
+        }
+        if (request.getSecurityAlertsEnabled() != null) {
+            user.setSecurityAlertsEnabled(request.getSecurityAlertsEnabled());
+        }
+
         User saved = userRepository.save(user);
+        log.info("Notification settings updated for userId={}", saved.getId());
         return mapToProfileResponse(saved);
     }
 
-    private User findUserByPrincipal(String principalName) {
+    @Transactional(readOnly = true)
+    protected User findUserByPrincipal(String principalName) {
         return userRepository.findByUsername(principalName)
                 .or(() -> userRepository.findByEmail(principalName))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + principalName));
     }
 
+    @Transactional(readOnly = true)
     private UserProfileResponse mapToProfileResponse(User user) {
-        String resolvedImageUrl = StringUtils.hasText(user.getProfileImageUrl())
-                ? user.getProfileImageUrl()
-                : profileImageProperties.getDefaultUrl();
-
-        long totalOrders = orderRepository.findByUser_IdOrderByOrderDateDesc(user.getId()).size();
-        long wishlistCount = wishlistRepository.countByUserId(user.getId());
-        long reviewCount = reviewRepository.countByUser_Id(user.getId());
-        int completion = calculateProfileCompletion(user);
+        List<AddressDto> addressDtos = user.getAddresses() != null
+                ? user.getAddresses().stream()
+                  .filter(addr -> addr != null)
+                  .map(this::mapAddressToDto)
+                  .collect(Collectors.toList())
+                : List.of();
 
         return UserProfileResponse.builder()
                 .id(user.getId())
@@ -275,7 +411,7 @@ public class UserProfileServiceImpl implements UserProfileService {
                 .dateOfBirth(user.getDateOfBirth())
                 .country(user.getCountry())
                 .city(user.getCity())
-                .profileImageUrl(resolvedImageUrl)
+                .profileImageUrl(user.getProfileImageUrl())
                 .emailVerified(user.getEmailVerified())
                 .phoneVerified(user.getPhoneVerified())
                 .emailVerifiedAt(user.getEmailVerifiedAt())
@@ -292,10 +428,11 @@ public class UserProfileServiceImpl implements UserProfileService {
                 .isEnabled(user.getIsEnabled())
                 .createdAt(user.getCreatedAt())
                 .lastLoginAt(user.getLastLoginAt())
-                .totalOrders(totalOrders)
-                .wishlistCount(wishlistCount)
-                .reviewCount(reviewCount)
-                .profileCompletion(completion)
+                .totalOrders((long) orderRepository.findByUser_IdOrderByOrderDateDesc(user.getId()).size())
+                .wishlistCount(wishlistRepository.countByUserId(user.getId()))
+                .reviewCount(reviewRepository.countByUser_Id(user.getId()))
+                .profileCompletion(calculateProfileCompletion(user))
+                .addresses(addressDtos)
                 .build();
     }
 
@@ -369,5 +506,16 @@ public class UserProfileServiceImpl implements UserProfileService {
         }
         return normalized;
     }
-}
 
+    private AddressDto mapAddressToDto(Address address) {
+        return AddressDto.builder()
+                .addressId(address.getAddressId())
+                .fullName(address.getFullName())
+                .phoneNumber(address.getPhoneNumber())
+                .city(address.getCity())
+                .district(address.getDistrict())
+                .detailsAddress(address.getDetailsAddress())
+                .userId(address.getUser() != null ? address.getUser().getId() : null)
+                .build();
+    }
+}

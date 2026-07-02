@@ -1,6 +1,7 @@
 package com.example.demo_project_spring_boot.controller;
 
 import com.example.demo_project_spring_boot.dto.ApiResult;
+import com.example.demo_project_spring_boot.dto.UpdateProfileWithTokenResponse;
 import com.example.demo_project_spring_boot.dto.UploadImageResponse;
 import com.example.demo_project_spring_boot.dto.UserProfileResponse;
 import com.example.demo_project_spring_boot.dto.request.ChangeUserPasswordRequest;
@@ -9,6 +10,7 @@ import com.example.demo_project_spring_boot.dto.request.UpdateUserProfileRequest
 import com.example.demo_project_spring_boot.dto.request.UserAddressRequest;
 import com.example.demo_project_spring_boot.dto.response.UserAddressResponse;
 import com.example.demo_project_spring_boot.service.UserProfileService;
+import com.example.demo_project_spring_boot.service.impl.UserProfileServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -52,16 +54,22 @@ public class UserProfileController {
     }
 
     @PutMapping("/profile")
-    @Operation(summary = "Update user profile", security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Update user profile with token regeneration if username/email changes", 
+               security = @SecurityRequirement(name = "bearerAuth"))
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResult<UserProfileResponse>> updateProfile(
+    public ResponseEntity<ApiResult<UpdateProfileWithTokenResponse>> updateProfile(
             Authentication authentication,
             @Valid @RequestBody UpdateUserProfileRequest request
     ) {
-        UserProfileResponse payload = userProfileService.updateMyProfile(authentication.getName(), request);
-        return ResponseEntity.ok(ApiResult.<UserProfileResponse>builder()
+        // Cast to implementation to access the new method with token regeneration
+        UserProfileServiceImpl serviceImpl = (UserProfileServiceImpl) userProfileService;
+        UpdateProfileWithTokenResponse payload = serviceImpl.updateMyProfileWithTokens(
+                authentication.getName(), 
+                request
+        );
+        return ResponseEntity.ok(ApiResult.<UpdateProfileWithTokenResponse>builder()
                 .success(true)
-                .message("Profile updated successfully")
+                .message(payload.getMessage())
                 .data(payload)
                 .build());
     }

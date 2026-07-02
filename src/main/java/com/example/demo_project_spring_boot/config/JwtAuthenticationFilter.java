@@ -1,5 +1,6 @@
 package com.example.demo_project_spring_boot.config;
 
+import com.example.demo_project_spring_boot.model.User;
 import com.example.demo_project_spring_boot.repository.UserRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -79,24 +80,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
+            final Long userId = jwtService.extractUserId(jwt);
             final String username = jwtService.extractUsername(jwt);
-            log.debug("[JWT] Processing token for request: {} {} | extracted username: {}",
-                    request.getMethod(), requestPath, username);
+            
+            log.debug("[JWT] Processing token for request: {} {} | extracted user ID: {}, username: {}",
+                    request.getMethod(), requestPath, userId, username);
 
-            if (username == null) {
-                log.warn("[JWT] Token has no subject (username) for request: {}", requestPath);
+            if (userId == null || !StringUtils.hasText(username)) {
+                log.warn("[JWT] Token has no subject or user ID for request: {}", requestPath);
                 request.setAttribute(AUTH_FAILURE_REASON_ATTR, "JWT token has no subject");
                 filterChain.doFilter(request, response);
                 return;
             }
 
             if (SecurityContextHolder.getContext().getAuthentication() != null) {
-                log.debug("[JWT] SecurityContext already authenticated for user: {}", username);
+                log.debug("[JWT] SecurityContext already authenticated for user: {}", userId);
                 filterChain.doFilter(request, response);
                 return;
             }
 
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+            if (userDetails == null) {
+                log.warn("[JWT] UserDetails not found for username: {} | path: {}", username, requestPath);
+                request.setAttribute(AUTH_FAILURE_REASON_ATTR, "User not found");
+                filterChain.doFilter(request, response);
+                return;
+            }
 
             // Check JWT structural validity and expiry
             boolean tokenValid = jwtService.isTokenValid(jwt, userDetails);
@@ -125,14 +135,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .map(com.example.demo_project_spring_boot.model.User::getAccessToken)
                     .orElse(null);
 
-            boolean tokenMatcheDb = (activeAccessToken == null
+            boolean tokenMatchesDb = (activeAccessToken == null
                     || activeAccessToken.isBlank()
                     || Objects.equals(jwt, activeAccessToken));
 
             log.debug("[JWT] DB token binding check - dbTokenPresent: {}, matches: {} | user: {}",
-                    (activeAccessToken != null && !activeAccessToken.isBlank()), tokenMatcheDb, username);
+                    (activeAccessToken != null && !activeAccessToken.isBlank()), tokenMatchesDb, username);
 
-            if (!tokenMatcheDb) {
+            if (!tokenMatchesDb) {
                 log.warn("[JWT] Token does not match stored active session token for user: {} | path: {} "
                         + "| This usually means the user logged in again or refreshed their token on another device.",
                         username, requestPath);
