@@ -1,0 +1,118 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.springframework.boot",
+    "module": "spring-boot-actuator",
+    "version": "3.4.1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.11.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "3.4.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-actuator-3.4.1.jar",
+          "url": "spring-boot-actuator-3.4.1.jar",
+          "size": 697608,
+          "sha512": "8ceee262b7a2ad92659810d597e9992d385643b61a84671014739fde5bf12a2ef788285698ad9edaaa62342844bb11ddfddad73f844f91cea328e18a7eda4cb2",
+          "sha256": "bee749846a58aa7a6ae859836d689127dc3a37211c7432f790e66a57787b255d",
+          "sha1": "77873fd387c46b7bb350cc6127a3b0162c41f9bf",
+          "md5": "82b1dd4f080667ebbf8886017afc8907"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "3.4.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-actuator-3.4.1.jar",
+          "url": "spring-boot-actuator-3.4.1.jar",
+          "size": 697608,
+          "sha512": "8ceee262b7a2ad92659810d597e9992d385643b61a84671014739fde5bf12a2ef788285698ad9edaaa62342844bb11ddfddad73f844f91cea328e18a7eda4cb2",
+          "sha256": "bee749846a58aa7a6ae859836d689127dc3a37211c7432f790e66a57787b255d",
+          "sha1": "77873fd387c46b7bb350cc6127a3b0162c41f9bf",
+          "md5": "82b1dd4f080667ebbf8886017afc8907"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-actuator-3.4.1-javadoc.jar",
+          "url": "spring-boot-actuator-3.4.1-javadoc.jar",
+          "size": 1505395,
+          "sha512": "9217acb9b1a2ee94b972606b019698d59ce5f3c853eaea216f27178ec58c5124e6aa3e4c86a29cca441fd54447385a4c535d103640765a85a642b58ebcd802ae",
+          "sha256": "631c37d8fc763910a9e05bca4d3cec0ef84d6a2f0caa66f2aca15aedd0cd85d6",
+          "sha1": "30948fd893f893a2671fd0075c9604545b938376",
+          "md5": "1928ea015609af0900af241f23a07170"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-actuator-3.4.1-sources.jar",
+          "url": "spring-boot-actuator-3.4.1-sources.jar",
+          "size": 469064,
+          "sha512": "a3892594ba113d0120e586f13a46f5fd6ce5483161730ba93e732015d46353db0ec18c309b0959f374fab018adf29272952778b372fa326259c4de615571c20f",
+          "sha256": "415ba0fb4b383edc3c621acebbdd184bf7d1e01798afedeb2fd3dfb5e7ea3589",
+          "sha1": "9a1eb9ce85a65c04e95fb92dce8956cbfea55ed0",
+          "md5": "6be7000f6fded61e9e10345ca8892c18"
+        }
+      ]
+    }
+  ]
+}

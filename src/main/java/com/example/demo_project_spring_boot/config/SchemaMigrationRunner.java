@@ -72,23 +72,21 @@ public class SchemaMigrationRunner implements CommandLineRunner {
             log.warn("Skipping role backfill: {}", ex.getMessage());
         }
 
-        // Backfill from legacy naming if this column already existed in older deployments.
-        jdbcTemplate.execute("""
-                DO $$
-                BEGIN
-                    IF EXISTS (
-                        SELECT 1
-                        FROM information_schema.columns
-                        WHERE table_schema = current_schema()
-                          AND table_name = 'users'
-                          AND column_name = 'is_oauth2_linked'
-                    ) THEN
-                        EXECUTE 'UPDATE users
-                                 SET oauth_account_linked = is_oauth2_linked
-                                 WHERE oauth_account_linked IS DISTINCT FROM is_oauth2_linked';
-                    END IF;
-                END $$;
-                """);
+        // Backfill from the legacy column name when it exists.
+        if (columnExists("users", "is_oauth2_linked") && columnExists("users", "oauth_account_linked")) {
+            try {
+                jdbcTemplate.execute("""
+                        UPDATE users
+                        SET oauth_account_linked = is_oauth2_linked
+                        WHERE is_oauth2_linked IS NOT NULL
+                          AND oauth_account_linked <> is_oauth2_linked
+                        """);
+            } catch (Exception ex) {
+                log.warn("Skipping legacy oauth_account_linked backfill: {}", ex.getMessage());
+            }
+        } else {
+            log.debug("Skipping legacy oauth_account_linked backfill because legacy columns are not present.");
+        }
 
         try {
             jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN oauth_provider SET DEFAULT 'LOCAL'");
@@ -149,5 +147,19 @@ public class SchemaMigrationRunner implements CommandLineRunner {
 
         log.info("Schema migration complete.");
     }
-}
 
+    private boolean columnExists(String tableName, String columnName) {
+        Integer count = jdbcTemplate.queryForObject(
+                """
+                        SELECT COUNT(*)
+                        FROM information_schema.columns
+                        WHERE LOWER(table_name) = LOWER(?)
+                          AND LOWER(column_name) = LOWER(?)
+                        """,
+                Integer.class,
+                tableName,
+                columnName
+        );
+        return count != null && count > 0;
+    }
+}

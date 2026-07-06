@@ -411,7 +411,7 @@ public class UserProfileServiceImpl implements UserProfileService {
                 .dateOfBirth(user.getDateOfBirth())
                 .country(user.getCountry())
                 .city(user.getCity())
-                .profileImageUrl(user.getProfileImageUrl())
+                .profileImageUrl(resolveProfileImageUrl(user))
                 .emailVerified(user.getEmailVerified())
                 .phoneVerified(user.getPhoneVerified())
                 .emailVerifiedAt(user.getEmailVerifiedAt())
@@ -434,6 +434,13 @@ public class UserProfileServiceImpl implements UserProfileService {
                 .profileCompletion(calculateProfileCompletion(user))
                 .addresses(addressDtos)
                 .build();
+    }
+
+    private String resolveProfileImageUrl(User user) {
+        if (StringUtils.hasText(user.getProfileImageUrl())) {
+            return user.getProfileImageUrl();
+        }
+        return profileImageProperties.getDefaultUrl();
     }
 
     private UserAddressResponse mapAddress(Address address) {

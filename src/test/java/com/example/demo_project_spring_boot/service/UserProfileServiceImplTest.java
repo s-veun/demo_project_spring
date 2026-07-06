@@ -2,6 +2,7 @@ package com.example.demo_project_spring_boot.service;
 
 import com.example.demo_project_spring_boot.Enum.AuthProvider;
 import com.example.demo_project_spring_boot.Enum.Role;
+import com.example.demo_project_spring_boot.config.JwtService;
 import com.example.demo_project_spring_boot.config.ProfileImageProperties;
 import com.example.demo_project_spring_boot.dto.UploadImageResponse;
 import com.example.demo_project_spring_boot.model.User;
@@ -59,6 +60,9 @@ class UserProfileServiceImplTest {
     @Mock
     private ProfileUploadRateLimiter profileUploadRateLimiter;
 
+    @Mock
+    private JwtService jwtService;
+
     private ProfileImageValidator profileImageValidator;
     private ProfileImageProperties profileImageProperties;
     private PasswordPolicyValidator passwordPolicyValidator;
@@ -87,7 +91,8 @@ class UserProfileServiceImplTest {
                 passwordPolicyValidator,
                 passwordEncoder,
                 profileUploadRateLimiter,
-                profileImageProperties
+                profileImageProperties,
+                jwtService
         );
 
         lenient().when(orderRepository.findByUser_IdOrderByOrderDateDesc(1L)).thenReturn(java.util.List.of());
@@ -137,4 +142,3 @@ class UserProfileServiceImplTest {
         assertEquals("/uploads/profile-images/default-avatar.png", profile.getProfileImageUrl());
     }
 }
-

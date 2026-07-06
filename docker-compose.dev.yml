@@ -1,0 +1,99 @@
+# ────────────────────────────────────────────────────────────────────────────
+# Docker Compose for Local Development
+# ────────────────────────────────────────────────────────────────────────────
+# This file sets up a local PostgreSQL 15 instance for development
+# 
+# Usage:
+#   1. Start: docker-compose up -d
+#   2. Check: docker-compose ps
+#   3. Stop:  docker-compose down
+#   4. Logs:  docker-compose logs -f postgres
+#   5. Shell: docker exec -it postgres psql -U postgres
+# ────────────────────────────────────────────────────────────────────────────
+
+version: '3.8'
+
+services:
+  # PostgreSQL 15 Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ecommerce_postgres_local
+    hostname: postgres
+    
+    # Environment Variables
+    environment:
+      POSTGRES_DB: ecommerce_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=pg_stat_statements"
+    
+    # Port Mapping
+    ports:
+      - "5432:5432"
+    
+    # Persistent Data Volume
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Optional: Mount initialization SQL scripts
+      # - ./init-scripts:/docker-entrypoint-initdb.d
+    
+    # Health Check
+    healthcheck:
+      test: 
+        - CMD-SHELL
+        - pg_isready -U postgres -d ecommerce_db
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    
+    # Restart Policy
+    restart: unless-stopped
+    
+    # Resource Limits (Optional)
+    # Uncomment to limit resources
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 512M
+    #     reservations:
+    #       cpus: '1'
+    #       memory: 256M
+
+  # Optional: pgAdmin for Database Management UI
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ecommerce_pgadmin_local
+    
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    
+    ports:
+      - "5050:80"
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    restart: unless-stopped
+    
+    # Volumes (Optional - for persistent pgAdmin config)
+    # volumes:
+    #   - pgadmin_data:/var/lib/pgadmin
+
+# Named Volumes
+volumes:
+  postgres_data:
+    driver: local
+  # pgadmin_data:
+  #   driver: local
+
+# Network (Optional - for multi-service communication)
+networks:
+  default:
+    name: ecommerce_network
+    driver: bridge
