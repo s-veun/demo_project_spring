@@ -45,20 +45,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/v3/api-docs/**"
     );
 
+    private static final List<String> PUBLIC_GET_PATHS = List.of(
+            "/api/v1/products/**",
+            "/api/v1/categories/**",
+            "/api/v1/reviews/**",
+            "/api/v1/search/**",
+            "/api/v1/popularity/**",
+            "/uploads/**",
+            "/actuator/health",
+            "/actuator/health/**",
+            "/actuator/info"
+    );
+
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final UserRepository userRepository;
 
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        String path = request.getRequestURI();
-        String contextPath = request.getContextPath();
+        String requestPath = normalizePath(request);
 
-        if (StringUtils.hasText(contextPath) && path.startsWith(contextPath)) {
-            path = path.substring(contextPath.length());
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
         }
 
-        final String requestPath = path;
+        if ("GET".equalsIgnoreCase(request.getMethod())
+                && PUBLIC_GET_PATHS.stream().anyMatch(pattern -> PATH_MATCHER.match(pattern, requestPath))) {
+            return true;
+        }
+
         return SKIP_PATHS.stream().anyMatch(pattern -> PATH_MATCHER.match(pattern, requestPath));
     }
 
@@ -69,7 +84,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        final String requestPath = request.getRequestURI();
+        final String requestPath = normalizePath(request);
         final String jwt = extractAccessToken(request);
 
         if (!StringUtils.hasText(jwt)) {
@@ -81,13 +96,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             final Long userId = jwtService.extractUserId(jwt);
-            final String username = jwtService.extractUsername(jwt);
-            
+            String username = jwtService.extractUsername(jwt);
+
             log.debug("[JWT] Processing token for request: {} {} | extracted user ID: {}, username: {}",
                     request.getMethod(), requestPath, userId, username);
 
-            if (userId == null || !StringUtils.hasText(username)) {
-                log.warn("[JWT] Token has no subject or user ID for request: {}", requestPath);
+            User user = null;
+            if (!StringUtils.hasText(username) && userId != null) {
+                user = userRepository.findById(userId).orElse(null);
+                if (user != null) {
+                    username = user.getUsername();
+                    log.debug("[JWT] Recovered username '{}' from userId={} for request: {}",
+                            username, userId, requestPath);
+                }
+            }
+
+            if (!StringUtils.hasText(username)) {
+                log.warn("[JWT] Token has no resolvable subject for request: {}", requestPath);
                 request.setAttribute(AUTH_FAILURE_REASON_ATTR, "JWT token has no subject");
                 filterChain.doFilter(request, response);
                 return;
@@ -109,7 +134,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             // Check JWT structural validity and expiry
-            boolean tokenValid = jwtService.isTokenValid(jwt, userDetails);
+            boolean tokenValid = StringUtils.hasText(jwtService.extractUsername(jwt))
+                    ? jwtService.isTokenValid(jwt, userDetails)
+                    : !jwtService.isTokenExpired(jwt);
             boolean isAccessType = jwtService.isAccessToken(jwt);
             log.debug("[JWT] Token validation - username match+not expired: {}, isAccessType: {} | user: {}",
                     tokenValid, isAccessType, username);
@@ -131,9 +158,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             // Check single-session token binding (DB stored token must match)
-            String activeAccessToken = userRepository.findByUsername(username)
-                    .map(com.example.demo_project_spring_boot.model.User::getAccessToken)
-                    .orElse(null);
+            if (user == null) {
+                user = userRepository.findByUsername(username).orElse(null);
+            }
+
+            String activeAccessToken = user != null ? user.getAccessToken() : null;
 
             boolean tokenMatchesDb = (activeAccessToken == null
                     || activeAccessToken.isBlank()
@@ -183,6 +212,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String normalizePath(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        String contextPath = request.getContextPath();
+
+        if (StringUtils.hasText(contextPath) && path.startsWith(contextPath)) {
+            path = path.substring(contextPath.length());
+        }
+
+        return path;
     }
 
     private String extractAccessToken(HttpServletRequest request) {

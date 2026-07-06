@@ -164,7 +164,12 @@ public class AdminController {
             }
             User admin = adminOpt.get();
 
-            String token = jwtService.generateAccessToken(userDetails);
+            String token = jwtService.generateAccessToken(
+                    admin.getId(),
+                    admin.getUsername(),
+                    admin.getEmail(),
+                    "ADMIN"
+            );
             String refreshToken = jwtService.generateRefreshToken(
                     admin.getUsername(),
                     admin.getId()
