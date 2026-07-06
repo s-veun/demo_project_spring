@@ -14,18 +14,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Resolves DATABASE_URL/JDBC_DATABASE_URL into Spring datasource properties before auto-configuration.
+ * Resolves hosted Postgres URLs into Spring datasource properties before auto-configuration.
  */
 public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        String datasourceUrl = environment.getProperty("spring.datasource.url");
-        if (StringUtils.hasText(datasourceUrl)) {
-            return;
-        }
-
         String databaseUrl = firstNonBlank(
+                environment.getProperty("SPRING_DATASOURCE_URL"),
+                environment.getProperty("spring.datasource.url"),
                 environment.getProperty("JDBC_DATABASE_URL"),
                 environment.getProperty("DATABASE_URL")
         );
@@ -35,6 +32,9 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
         }
 
         Map<String, Object> overrides = new HashMap<>();
+
+        String existingDatasourceUsername = environment.getProperty("spring.datasource.username");
+        String existingDatasourcePassword = environment.getProperty("spring.datasource.password");
 
         if (databaseUrl.startsWith("jdbc:")) {
             overrides.put("spring.datasource.url", databaseUrl);
@@ -54,10 +54,10 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
                     environment.getProperty("DB_PASSWORD")
             );
 
-            if (StringUtils.hasText(databaseUsername) && !StringUtils.hasText(environment.getProperty("spring.datasource.username"))) {
+            if (StringUtils.hasText(databaseUsername) && !StringUtils.hasText(existingDatasourceUsername)) {
                 overrides.put("spring.datasource.username", databaseUsername);
             }
-            if (StringUtils.hasText(databasePassword) && !StringUtils.hasText(environment.getProperty("spring.datasource.password"))) {
+            if (StringUtils.hasText(databasePassword) && !StringUtils.hasText(existingDatasourcePassword)) {
                 overrides.put("spring.datasource.password", databasePassword);
             }
         }
@@ -115,4 +115,3 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
     private record ParsedDatabaseUrl(String jdbcUrl, String username, String password) {
     }
 }
-
