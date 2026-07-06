@@ -16,4 +16,4 @@ ENV JAVA_OPTS=""
 EXPOSE 8080
 
 # Use PORT env if provided by Render; default to 8080
-ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -Dserver.port=${PORT:-8080} -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-prod} -Dserver.port=${PORT:-8080} -jar /app/app.jar"]

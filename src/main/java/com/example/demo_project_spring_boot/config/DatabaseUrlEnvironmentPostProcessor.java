@@ -42,11 +42,23 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
             ParsedDatabaseUrl parsed = parseDatabaseUrl(databaseUrl);
             overrides.put("spring.datasource.url", parsed.jdbcUrl());
 
-            if (StringUtils.hasText(parsed.username()) && !StringUtils.hasText(environment.getProperty("spring.datasource.username"))) {
-                overrides.put("spring.datasource.username", parsed.username());
+            String databaseUsername = firstNonBlank(
+                    parsed.username(),
+                    environment.getProperty("DATABASE_USERNAME"),
+                    environment.getProperty("DATABASE_USER"),
+                    environment.getProperty("DB_USERNAME")
+            );
+            String databasePassword = firstNonBlank(
+                    parsed.password(),
+                    environment.getProperty("DATABASE_PASSWORD"),
+                    environment.getProperty("DB_PASSWORD")
+            );
+
+            if (StringUtils.hasText(databaseUsername) && !StringUtils.hasText(environment.getProperty("spring.datasource.username"))) {
+                overrides.put("spring.datasource.username", databaseUsername);
             }
-            if (StringUtils.hasText(parsed.password()) && !StringUtils.hasText(environment.getProperty("spring.datasource.password"))) {
-                overrides.put("spring.datasource.password", parsed.password());
+            if (StringUtils.hasText(databasePassword) && !StringUtils.hasText(environment.getProperty("spring.datasource.password"))) {
+                overrides.put("spring.datasource.password", databasePassword);
             }
         }
 
@@ -103,5 +115,4 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
     private record ParsedDatabaseUrl(String jdbcUrl, String username, String password) {
     }
 }
-
 
